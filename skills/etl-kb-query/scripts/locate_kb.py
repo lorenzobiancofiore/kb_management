@@ -19,8 +19,7 @@ Uso:
     python3 locate_kb.py --etl-dir "/percorso/Progetti/Governance/Output/ETL_Documentale"
 
 Output: JSON su stdout con, per ogni ETL_Documentale trovata:
-- i path dei file di ciascuna fase (se presenti) e del registro correzioni
-  utente (`correzioni_*.json`), con il numero di correzioni attive
+- i path dei file di ciascuna fase (se presenti)
 - meta del catalogo (n. cluster, n. documenti totali)
 - quanti documenti/cluster sono coperti da estrazione/knowledge_layer/cronistoria
 - elenco dei cluster NON (o solo parzialmente) coperti, con label e size,
@@ -69,23 +68,14 @@ def analyze_etl_dir(etl_dir):
         "estrazione": pick_file(etl_dir, ["estrazione_*.json"]),
         "knowledge_layer": pick_file(etl_dir, ["knowledge_layer_*.json"]),
         "cronistoria": pick_file(etl_dir, ["cronistoria_*.json"]),
-        "correzioni": pick_file(etl_dir, ["correzioni_*.json"]),
     }
 
     catalogo = load_json(files["catalogo"])
     estrazione = load_json(files["estrazione"])
 
-    correzioni = load_json(files["correzioni"])
-    n_correzioni_attive = None
-    if isinstance(correzioni, dict) and "correzioni" in correzioni:
-        n_correzioni_attive = sum(
-            1 for c in correzioni["correzioni"] if c.get("stato", "attiva") == "attiva"
-        )
-
     result = {
         "etl_dir": etl_dir,
         "files": files,
-        "n_correzioni_attive": n_correzioni_attive,
         "coverage": None,
     }
 

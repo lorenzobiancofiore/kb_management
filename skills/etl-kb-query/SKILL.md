@@ -51,19 +51,6 @@ quadro per tutto il resto della ricerca: se la domanda cade in un cluster
 nulla su quel tema — non è un'assenza di informazione, è un'assenza di
 elaborazione. In questo caso vai direttamente al Passo 4b.
 
-## Passo 0bis — Leggi le correzioni dell'utente
-
-Se `locate_kb.py` riporta un file `correzioni` con `n_correzioni_attive`
-maggiore di zero, leggilo (è piccolo) prima di cercare: contiene
-correzioni, documenti segnalati come non affidabili e decisioni di
-perimetro date dall'utente (vedi `references/schemas.md`). Sono
-annotazioni, non sostituiscono i dati dei file di fase: quando una fonte
-che stai per citare compare in `riferimento` di una correzione `attiva`,
-la correzione ha la precedenza sul dato originale e va citata nella
-risposta (id, data, autore). Ignora le voci `superata`. Se una correzione
-contraddice un documento più recente, non risolvere in silenzio: mostra
-entrambi e segnalalo.
-
 ## Passo 1 — Interpreta la domanda
 
 Prima di cercare, capisci cosa serve davvero. In particolare individua:
@@ -269,8 +256,6 @@ Nella risposta finale:
 - Se la domanda riguardava l'evoluzione di una decisione, riassumi la
   catena (precedente → successiva → eseguita) in poche righe, non solo il
   punto finale — è spesso quello che rende la risposta davvero utile.
-- Se una correzione attiva (Passo 0bis) riguarda una fonte che hai usato,
-  citala: "Correzione C003 del 2026-08-03: …".
 - Se hai usato un documento segnalato in `avvisi_qualita_dati`, menziona
   brevemente il caveat (es. "nota: questo documento ha due date di
   aggiornamento diverse nel testo").
@@ -286,7 +271,5 @@ Nella risposta finale:
   interrogare la base se non conosci già questi schemi)
 - `scripts/locate_kb.py` — trova le cartelle ETL_Documentale e calcola la
   copertura reale (Passo 0)
-- `scripts/etl_pipeline/correzioni.py` (repo `kb_management`) — gestione del
-  registro correzioni; in questa skill serve solo leggerlo (Passo 0bis)
 - `scripts/semantic_candidates.py` — fallback lessicale TF-IDF su
   Estrazione quando il match esatto per nome/alias non basta (Passo 3bis)

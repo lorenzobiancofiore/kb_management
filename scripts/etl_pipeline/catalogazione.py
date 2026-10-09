@@ -22,6 +22,11 @@ Cosa fa questo script:
 - Scrive un catalogo (catalogo.json) con, per ogni documento, il cluster
   assegnato — così le fasi successive (estrazione, knowledge layer) possono
   concentrarsi sui documenti di uno stesso cluster.
+- Ogni cluster nasce con "tipo": null. Il tipo (es. "avanzamento",
+  "contenuto", "non_classificato" — le categorie usate dalla Fase 3 di
+  Estrazione) va assegnato a mano dopo revisione, esattamente come
+  l'etichetta: la modalità incrementale non lo tocca mai per i cluster già
+  esistenti, lo inizializza a null solo per i cluster nuovi.
 
 Due modalità:
 - BATCH (default): riclusterizza tutto da zero. Usarla per la prima
@@ -550,7 +555,8 @@ def write_catalog_outputs(catalogo, extraction_status, output_path, report_path)
         ordered = sorted(cluster_info.items(), key=lambda kv: -kv[1]["size"])
         lines = [f"# Catalogazione — {len(cluster_info)} cluster su {len(catalogo['documents'])} documenti", ""]
         for cid, info in ordered:
-            lines.append(f"## Cluster {cid} — {info['label']}  ({info['size']} documenti)")
+            tipo = info.get("tipo") or "da_classificare"
+            lines.append(f"## Cluster {cid} — [{tipo}] {info['label']}  ({info['size']} documenti)")
             lines.append("")
             lines.append(f"Parole chiave: {', '.join(info['top_terms'])}")
             lines.append("")
@@ -626,6 +632,7 @@ def run_batch(args):
             "representative_document": rep_doc,
             "documents": sorted(member_paths),
             "centroid": centroid_dict,
+            "tipo": None,
         }
         for p in member_paths:
             doc_to_cluster[p] = cid
@@ -768,6 +775,7 @@ def run_incremental(args):
                 "representative_document": grp[rep_local_idx],
                 "documents": sorted(grp),
                 "centroid": centroid_dict,
+                "tipo": None,
             }
             for rp in grp:
                 doc_to_cluster[rp] = cid

@@ -497,29 +497,6 @@ conferma — senza mai cancellare il ragionamento originale. Questo vale
 identicamente sia in bootstrap che in estensione: è quello che rende la
 knowledge base affidabile da interrogare più avanti con `etl-kb-query`.
 
-## Correzioni dell'utente: registro e comandi
-
-Quando l'utente corregge o giudica la knowledge base ("Correggi: …",
-"questo documento non va usato", "il cluster X è di tipo contenuto"), non
-modificare a mano i JSON di fase né scrivere la correzione dentro uno
-script di build: registrala in `correzioni_<Progetto>.json` con
-`scripts/etl_pipeline/correzioni.py`. Sono annotazioni lette da
-`etl-kb-query` (Passo 0bis), non modificano i dati di fase.
-
-- "Correggi: …" / "Ricorda: …" → `correzioni.py add` (tipo, riferimento a
-  documento/entità/tema, testo, motivo, autore). Conferma all'utente id e
-  contenuto registrato.
-- Se la correzione ne sostituisce una precedente → `correzioni.py
-  supersede --id Cxxx --sostituita-da Cyyy` (la vecchia resta come storia).
-- "Cosa ricordi di …?" → `correzioni.py find --query …`, mostra le voci
-  attive con data e autore.
-- "Dimentica: …" → `correzioni.py forget --id Cxxx`, solo su richiesta
-  esplicita.
-
-Se una correzione rivela un errore strutturale nei dati di fase (es. un
-documento nel cluster sbagliato), registrala comunque e proponi
-separatamente all'utente la rigenerazione della fase interessata.
-
 ## Riferimenti agli script canonici
 
 Le Fasi 1-2 e il passo derivato Relazioni hanno un algoritmo stabile che
