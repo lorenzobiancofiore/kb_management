@@ -164,3 +164,41 @@ stata costruita partendo da un sottoinsieme del corpus (un pilota), non
 dall'intero catalogo — da qui l'importanza di controllare la copertura
 reale con `locate_kb.py` prima di trattare l'assenza di un'informazione
 come "non esiste" invece che "non è stata ancora processata".
+
+
+## Registro correzioni (`correzioni_*.json`) — opzionale
+
+Non è una fase della pipeline: è il registro delle correzioni e dei giudizi
+dati dall'utente sulla knowledge base ("questo documento non va usato",
+"la data corretta è…", "il cluster X va trattato come contenuto"). Può non
+esistere (progetti senza correzioni) e `locate_kb.py` riporta path e numero
+di voci attive.
+
+```json
+{
+  "meta": {"versione": 1},
+  "correzioni": [
+    {
+      "id": "C001",
+      "tipo": "correzione" | "documento_non_affidabile" | "perimetro" | "nota",
+      "riferimento": {"documento": "percorso/relativo", "entita": "nome_canonico", "tema": "..."},
+      "testo": "cosa è stato corretto/deciso",
+      "motivo": "perché",
+      "autore": "...",
+      "data": "YYYY-MM-DD",
+      "stato": "attiva" | "superata",
+      "superata_il": "YYYY-MM-DD",
+      "sostituita_da": "C007"
+    }
+  ]
+}
+```
+
+- Sono **annotazioni**: non modificano mai catalogo, estrazione, knowledge
+  layer o cronistoria. Chi interroga le legge e le cita accanto alla fonte
+  a cui si riferiscono (`riferimento` contiene almeno uno tra `documento`,
+  `entita`, `tema`).
+- Una correzione non si cancella ma si marca `superata`; solo "Dimentica:"
+  esplicito dell'utente la elimina davvero.
+- Gestione tramite `scripts/etl_pipeline/correzioni.py` (add, list, find,
+  supersede, forget).
