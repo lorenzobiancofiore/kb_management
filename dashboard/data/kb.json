@@ -1,0 +1,51 @@
+{
+ "stats": {
+  "generato_il": "",
+  "documenti_indicizzati": 0,
+  "documenti_estratti": 0,
+  "estratti_avanzamento": 0,
+  "estratti_contenuto": 0,
+  "non_elaborati": 0,
+  "non_elaborati_per_motivo": [],
+  "cluster": 0,
+  "persone": 0,
+  "sistemi_tool": 0,
+  "riferimenti_normativi": 0,
+  "menzioni": 0,
+  "timeline_voci": 0,
+  "timeline_dal": "",
+  "timeline_al": "",
+  "temi_tracciati": 0,
+  "avvisi_totali": 0,
+  "avvisi_da_gestire": 0,
+  "avvisi_gestiti": 0,
+  "avvisi_informativi": 0,
+  "archi_b1": 0,
+  "archi_b2": 0,
+  "archi_a": 0,
+  "correzioni_attive": 0
+ },
+ "per_cluster": [],
+ "non_elaborati": [],
+ "clusters": {},
+ "documents": {},
+ "estrazione": {
+  "avanzamento": {},
+  "contenuto": {}
+ },
+ "kl": {
+  "persone": [],
+  "sistemi_tool": [],
+  "riferimenti_normativi": []
+ },
+ "cronistoria": {
+  "timeline": [],
+  "temi": [],
+  "avvisi": []
+ },
+ "relazioni": {
+  "b1": [],
+  "b2": []
+ },
+ "correzioni": []
+}

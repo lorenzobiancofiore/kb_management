@@ -1,0 +1,21 @@
+{
+ "data_run": null,
+ "tipo": null,
+ "esito": "nessun_dato",
+ "riepilogo": "Nessuna elaborazione registrata.",
+ "novita": {
+  "nuovi": [],
+  "modificati": [],
+  "mancanti": [],
+  "convertiti": [],
+  "non_estraibili": []
+ },
+ "conteggi": {
+  "prima": {},
+  "dopo": {}
+ },
+ "avvisi_nuovi": [],
+ "risposte_applicate": [],
+ "errori": [],
+ "storico": []
+}
