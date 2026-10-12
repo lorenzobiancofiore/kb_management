@@ -1,0 +1,445 @@
+<title>Cruscotto KB Progetto DG</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: colonna unica a schede nell'ordine di lettura (esito, punti da gestire, numeri, interrogazione); la scheda numeri usa una griglia di tessere. */
+:root{
+  --bg:#F2F5F8; --surface:#FFFFFF; --ink:#14222E; --muted:#556675; --line:#D8E0E7;
+  --accent:#0A5C8A; --accent-ink:#FFFFFF; --accent-soft:#E2EFF7;
+  --ok:#1D7448; --ok-soft:#E1F2E8; --warn:#8F5600; --warn-soft:#FBEED2; --crit:#B3261E; --crit-soft:#FBE4E2; --info:#4A5B6A; --info-soft:#E8EDF1;
+  --font:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D1620; --surface:#15212D; --ink:#E5ECF2; --muted:#9AABBA; --line:#263646;
+  --accent:#62B6E8; --accent-ink:#08141D; --accent-soft:#16344A;
+  --ok:#5CC590; --ok-soft:#16342A; --warn:#E3A945; --warn-soft:#3A2D12; --crit:#F08A83; --crit-soft:#3C1B19; --info:#A8B8C6; --info-soft:#1E2E3C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1620; --surface:#15212D; --ink:#E5ECF2; --muted:#9AABBA; --line:#263646;
+  --accent:#62B6E8; --accent-ink:#08141D; --accent-soft:#16344A;
+  --ok:#5CC590; --ok-soft:#16342A; --warn:#E3A945; --warn-soft:#3A2D12; --crit:#F08A83; --crit-soft:#3C1B19; --info:#A8B8C6; --info-soft:#1E2E3C; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+*{box-sizing:border-box}
+.wrap{max-width:1080px;margin-inline:auto;display:flex;flex-direction:column;gap:18px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;padding-bottom:4px}
+h1{font-size:22px;line-height:1.2;margin:0;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;font-size:13px}
+.stamp{font-family:var(--mono);font-size:12px;color:var(--muted)}
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+section.card>h2{margin:0;font-size:16px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h3{margin:0;font-size:13px;font-weight:600;letter-spacing:.02em}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.crit{background:var(--crit-soft);color:var(--crit)} .pill.info{background:var(--info-soft);color:var(--info)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-size:12px;word-break:break-word}
+.row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.grid{display:grid;gap:10px}
+.g-chg{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.g-stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--bg);min-width:0}
+details>summary{cursor:pointer;font-weight:600;font-size:13px;display:flex;justify-content:space-between;gap:10px;align-items:center;list-style:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::after{content:"+";font-family:var(--mono);color:var(--muted)}
+details[open]>summary::after{content:"–"}
+details ul{margin:8px 0 2px;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.num{font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td.r,th.r{text-align:right}
+.tablewrap{overflow-x:auto}
+.delta.up{color:var(--ok)} .delta.zero{color:var(--muted)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:5px 12px;border-radius:999px;cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tab .n{font-family:var(--mono);font-weight:500;margin-left:6px;opacity:.85}
+.avvisi{display:flex;flex-direction:column;gap:12px}
+.av{border:1px solid var(--line);border-left:4px solid var(--info);border-radius:8px;padding:12px 14px;background:var(--surface);display:flex;flex-direction:column;gap:10px;min-width:0}
+.av.da_gestire{border-left-color:var(--warn)} .av.gestito{border-left-color:var(--ok)}
+.av .head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.av .txt{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.av .txt.clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.linkbtn{font:inherit;font-size:12px;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px;align-self:flex-start}
+.reply{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.esiti{display:flex;flex-wrap:wrap;gap:6px}
+.esito{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:3px 11px;border-radius:6px;cursor:pointer}
+.esito[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+textarea,input[type=text]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:62px}
+.btn{font:inherit;font-weight:600;font-size:13px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:7px 16px;border-radius:8px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sent{background:var(--ok-soft);color:var(--ok);border-radius:8px;padding:8px 12px;font-size:13px}
+.sent.applied{background:var(--info-soft);color:var(--info)}
+.tile{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--bg);display:flex;flex-direction:column;gap:2px}
+.tile b{font-size:22px;line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums}
+.tile span{color:var(--muted);font-size:12px}
+.bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--info-soft)}
+.bar i{display:block;height:100%}
+.bar .a{background:var(--accent)} .bar .c{background:color-mix(in srgb,var(--accent) 45%,var(--surface))}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+.legend s{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;text-decoration:none;vertical-align:-1px}
+.mini{height:6px;border-radius:3px;background:var(--info-soft);overflow:hidden;min-width:70px}
+.mini i{display:block;height:100%;background:var(--accent)}
+.ask{display:flex;flex-direction:column;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:4px 12px;cursor:pointer;text-align:left}
+.answer{border:1px solid var(--line);border-radius:8px;padding:14px;background:var(--bg);display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.answer p{margin:0} .answer ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+.answer code{font-family:var(--mono);font-size:12px;background:var(--info-soft);padding:1px 5px;border-radius:4px}
+.steps{display:flex;flex-direction:column;gap:2px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.srcs{display:flex;flex-direction:column;gap:4px}
+.note{font-size:12px;color:var(--muted)}
+.err{background:var(--crit-soft);color:var(--crit);border-radius:8px;padding:8px 12px;font-size:13px}
+.empty{padding:14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);text-align:center}
+
+.quick{display:flex;flex-wrap:wrap;gap:8px}
+.qbtn{font:inherit;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}
+.qbtn:hover{border-color:var(--accent)}
+.badge{display:none;font-family:var(--mono);font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;background:var(--info-soft);color:var(--info)}
+.badge.on{display:inline-block} .badge.warn{background:var(--warn-soft);color:var(--warn)} .badge.crit{background:var(--crit-soft);color:var(--crit)}
+.sec-head{font:inherit;color:var(--ink);background:none;border:0;padding:0;width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;text-align:left}
+.sec-head .t{font-size:16px;font-weight:600}
+.sec-head .chev{margin-left:auto;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+.sec-head[aria-expanded="true"] .chev{transform:rotate(-135deg)}
+.sec-body{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sec-body[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Cruscotto KB Progetto DG</h1>
+      <p class="sub">Knowledge base documentale del Progetto Data Governance: esito degli aggiornamenti, punti aperti, numeri e interrogazione.</p>
+    </div>
+    <div class="stamp" id="stamp">caricamento dati…</div>
+  </header>
+
+  <nav class="quick" aria-label="Sezioni">
+    <button class="qbtn" type="button" data-sec="esito"><span>Ultima elaborazione</span><span class="badge" id="bd-esito"></span></button>
+    <button class="qbtn" type="button" data-sec="avvisi"><span>Punti da gestire</span><span class="badge warn" id="bd-avvisi"></span></button>
+    <button class="qbtn" type="button" data-sec="numeri"><span>Numeri</span><span class="badge" id="bd-numeri"></span></button>
+    <button class="qbtn" type="button" data-sec="ask"><span>Interroga la knowledge</span></button>
+  </nav>
+
+  <section class="card" id="sec-esito">
+    <button class="sec-head" type="button" id="h-esito" aria-expanded="false" aria-controls="b-esito"><span class="t">Ultima elaborazione</span><span id="esito-pill"></span><span class="chev" aria-hidden="true"></span></button>
+    <div class="sec-body" id="b-esito" hidden><div id="esito-body"><div class="empty">Carico l'esito…</div></div></div>
+  </section>
+
+  <section class="card" id="sec-avvisi">
+    <button class="sec-head" type="button" id="h-avvisi" aria-expanded="false" aria-controls="b-avvisi"><span class="t">Punti da gestire</span><span id="avvisi-pill"></span><span class="chev" aria-hidden="true"></span></button>
+    <div class="sec-body" id="b-avvisi" hidden>
+      <p class="note" id="avvisi-note">Segnalazioni raccolte dalla pipeline. Le risposte restano salvate e vengono applicate alla KB dall'aggiornamento giornaliero delle 13:00.</p>
+      <div class="tabs" id="avvisi-tabs" role="group" aria-label="Filtro segnalazioni"></div>
+      <div class="avvisi" id="avvisi-list"></div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-numeri">
+    <button class="sec-head" type="button" id="h-numeri" aria-expanded="false" aria-controls="b-numeri"><span class="t">Numeri della knowledge base</span><span id="numeri-pill"></span><span class="chev" aria-hidden="true"></span></button>
+    <div class="sec-body" id="b-numeri" hidden><div id="numeri-body"><div class="empty">Carico le statistiche…</div></div></div>
+  </section>
+
+  <section class="card" id="sec-ask">
+    <button class="sec-head" type="button" id="h-ask" aria-expanded="false" aria-controls="b-ask"><span class="t">Interroga la knowledge</span><span class="chev" aria-hidden="true"></span></button>
+    <div class="sec-body" id="b-ask" hidden>
+      <p class="note">Le domande seguono il metodo della skill di interrogazione: prima Cronistoria, poi Knowledge Layer, poi Estrazione e Catalogo; risposta con documento e data come fonte. Ogni domanda è indipendente dalle precedenti.</p>
+      <div class="ask">
+        <label for="q" class="eyebrow">La tua domanda</label>
+        <textarea id="q" placeholder="Ad esempio: cosa è stato deciso sui ruoli di Data Owner e Data Steward?"></textarea>
+        <div class="chips" id="chips"></div>
+        <div class="row"><button class="btn" id="ask-btn" type="button">Chiedi alla knowledge</button><span class="note" id="ask-state"></span></div>
+        <div id="ans"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ============ funzioni pure (testabili senza DOM) ============ */
+var STOP=new Set("il lo la i gli le un una uno di a da in con su per tra fra e ed o ma che chi cosa come quale quali quando dove del dello della dei degli delle al allo alla ai agli alle dal dallo dalla dai dagli dalle nel nello nella nei negli nelle sul sullo sulla sui sugli sulle è sono ha hanno essere stato stati stata state si non più anche se questo questa questi queste quello quella the of and for to on".split(" "));
+function normTxt(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();}
+function toks(s){return normTxt(s).split(/[^a-z0-9]+/).filter(function(t){return t.length>1&&!STOP.has(t);});}
+function isoDate(d){return typeof d==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(d);}
+function byDateDesc(a,b){var x=isoDate(a.data)?a.data:"",y=isoDate(b.data)?b.data:"";return x<y?1:x>y?-1:0;}
+function clip(s,n){s=String(s==null?"":s);return s.length>n?s.slice(0,n-1)+"…":s;}
+function fmtDate(iso){try{var d=new Date(iso);if(isNaN(d))return iso||"";var hasTime=String(iso).indexOf("T")>-1;return new Intl.DateTimeFormat("it-IT",hasTime?{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"}:{day:"2-digit",month:"long",year:"numeric"}).format(d);}catch(e){return iso||"";}}
+
+function buildIndex(kb){
+  var docs=[],df={};
+  ["avanzamento","contenuto"].forEach(function(t){var o=(kb.estrazione&&kb.estrazione[t])||{};Object.keys(o).forEach(function(p){
+    var r=o[p],parts=[p.split("/").pop()];
+    ["argomento","sotto_tipo"].forEach(function(k){if(r[k])parts.push(r[k]);});
+    ["contenuti_trattati","decisioni","rischi_blocchi","prossimi_passi","processi_attivita","ruoli_responsabilita","sistemi_tool_citati","riferimenti_normativi","parole_chiave","partecipanti"].forEach(function(k){if(Array.isArray(r[k]))parts.push(r[k].join(" "));});
+    (r.action_item||[]).forEach(function(a){parts.push((a.responsabile||"")+" "+(a.descrizione||""));});
+    var tk=toks(parts.join(" ")),tf={};tk.forEach(function(w){tf[w]=(tf[w]||0)+1;});
+    Object.keys(tf).forEach(function(w){df[w]=(df[w]||0)+1;});
+    docs.push({path:p,tipo:t,rec:r,tf:tf,len:tk.length});
+  });});
+  var N=docs.length||1;
+  docs.forEach(function(d){var n=0;d.w={};Object.keys(d.tf).forEach(function(w){var v=(1+Math.log(d.tf[w]))*Math.log(1+N/df[w]);d.w[w]=v;n+=v*v;});d.norm=Math.sqrt(n)||1;});
+  return {docs:docs,df:df,N:N};
+}
+function textSearch(idx,query,top){
+  var q={},n=0;toks(query).forEach(function(w){q[w]=(q[w]||0)+1;});
+  Object.keys(q).forEach(function(w){var v=idx.df[w]?(1+Math.log(q[w]))*Math.log(1+idx.N/idx.df[w]):0;q[w]=v;n+=v*v;});
+  n=Math.sqrt(n);if(!n)return [];
+  var out=idx.docs.map(function(d){var s=0;Object.keys(q).forEach(function(w){if(d.w[w])s+=q[w]*d.w[w];});return {d:d,score:s/(n*d.norm)};}).filter(function(x){return x.score>0;});
+  out.sort(function(a,b){return b.score-a.score;});
+  return out.slice(0,top||8);
+}
+function dateOfRec(t,r){return t==="avanzamento"?(r.data_documento||null):(r.versione_data_validita||null);}
+function findEntities(kb,query,tipo){
+  var qt=toks(query);if(!qt.length)return [];var res=[];
+  [["persone","persona"],["sistemi_tool","sistema_tool"],["riferimenti_normativi","riferimento_normativo"]].forEach(function(p){
+    if(tipo&&tipo!==p[1])return;
+    (kb.kl[p[0]]||[]).forEach(function(e){
+      var names=[e.nome_canonico].concat(e.alias||[]).map(normTxt),best=0;
+      qt.forEach(function(t){var hit=0;names.forEach(function(nm){if(nm.split(/[^a-z0-9]+/).indexOf(t)>-1)hit=Math.max(hit,1);else if(nm.indexOf(t)>-1)hit=Math.max(hit,.6);});best+=hit;});
+      var sc=best/qt.length;if(sc>=0.5)res.push({e:e,tipo:p[1],score:sc});
+    });
+  });
+  res.sort(function(a,b){return b.score-a.score||((b.e.menzioni||[]).length-(a.e.menzioni||[]).length);});
+  return res.slice(0,8);
+}
+function entitySummary(x){
+  var e=x.e,m=(e.menzioni||[]).slice().sort(byDateDesc);
+  return {id:e.id,tipo:x.tipo,nome_canonico:e.nome_canonico,alias:(e.alias||[]).slice(0,12),famiglia:e.famiglia||undefined,n_menzioni:m.length,ultima_menzione:e.ultima_menzione?{documento:e.ultima_menzione.documento,data:e.ultima_menzione.data}:null,
+    menzioni_piu_recenti:m.slice(0,12).map(function(z){return {documento:z.documento,data:z.data,fonte_data:z.fonte_data,tipo_documento:z.tipo_documento,contesto:clip(z.contesto,220)};})};
+}
+function searchCronistoria(kb,query){
+  var qt=toks(query),c=kb.cronistoria;function hit(txt){var n=normTxt(txt);return qt.filter(function(t){return n.indexOf(t)>-1;}).length;}
+  var temi=(c.temi||[]).map(function(t){return {t:t,s:hit(JSON.stringify(t))};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3).map(function(x){return x.t;});
+  var avvisi=(c.avvisi||[]).map(function(a){return {a:a,s:hit(a.descrizione+" "+(a.documenti_coinvolti||a.documenti||[]).join(" "))};}).filter(function(x){return x.s>=Math.max(1,Math.ceil(qt.length/2));}).sort(function(a,b){return b.s-a.s;}).slice(0,5).map(function(x){return {tipo:x.a.tipo,stato:x.a.stato,descrizione:clip(x.a.descrizione,500),documenti:(x.a.documenti_coinvolti||x.a.documenti||[]).slice(0,5)};});
+  var tl=(c.timeline||[]).map(function(v){return {v:v,s:hit((v.decisioni||[]).join(" ")+" "+v.documento)};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s||(isoDate(b.v.data)&&isoDate(a.v.data)?(b.v.data<a.v.data?-1:1):0);}).slice(0,8).map(function(x){return {data:x.v.data,documento:x.v.documento,fonte_data:x.v.fonte_data,decisioni:(x.v.decisioni||[]).slice(0,6).map(function(d){return clip(d,240);})};});
+  return {temi_tracciati:temi,avvisi_qualita_dati:avvisi,timeline_decisioni:tl};
+}
+function coverageSummary(kb){
+  return {documenti_indicizzati:kb.stats.documenti_indicizzati,documenti_estratti:kb.stats.documenti_estratti,
+    cluster:(kb.per_cluster||[]).map(function(c){return {id:c.id,label:clip(c.label,70),tipo:c.tipo,totale:c.totale,estratti:c.estratti,copertura:c.estratti===c.totale?"completo":c.estratti===0?"non_coperto":"parziale"};}),
+    non_elaborati_per_motivo:kb.stats.non_elaborati_per_motivo};
+}
+function docCard(kb,path){
+  var key=null,t=null;["avanzamento","contenuto"].forEach(function(k){if(kb.estrazione[k]&&kb.estrazione[k][path]){key=path;t=k;}});
+  if(!key){var np=normTxt(path);["avanzamento","contenuto"].forEach(function(k){Object.keys(kb.estrazione[k]||{}).forEach(function(p){if(!key&&normTxt(p)===np){key=p;t=k;}});});}
+  var meta=kb.documents[key||path]||null,cl=meta?kb.clusters[meta.c]:null;
+  var rel=(kb.cronistoria.avvisi||[]).filter(function(a){return (a.documenti_coinvolti||a.documenti||[]).indexOf(key||path)>-1;}).slice(0,4).map(function(a){return {tipo:a.tipo,descrizione:clip(a.descrizione,300)};});
+  var corr=(kb.correzioni||[]).filter(function(c){return !c.superata&&c.documento===(key||path);}).map(function(c){return {tipo:c.tipo,testo:c.testo};});
+  if(!key)return {trovato:false,nel_catalogo:!!meta,cluster:cl?{id:meta.c,label:cl.label,tipo:cl.tipo}:null,nota:"Documento non presente in Estrazione (non ancora elaborato o fuori perimetro)."};
+  return {trovato:true,percorso:key,tipo:t,data:dateOfRec(t,kb.estrazione[t][key]),cluster:cl?{id:meta.c,label:cl.label,tipo:cl.tipo}:null,estrazione:kb.estrazione[t][key],avvisi_su_questo_documento:rel,correzioni:corr};
+}
+function searchCatalog(kb,query){
+  var qt=toks(query),out=[];
+  Object.keys(kb.documents).forEach(function(p){var n=normTxt(p+" "+((kb.clusters[kb.documents[p].c]||{}).label||""));var s=qt.filter(function(t){return n.indexOf(t)>-1;}).length;if(s>0)out.push({p:p,s:s});});
+  out.sort(function(a,b){return b.s-a.s;});
+  return out.slice(0,15).map(function(x){var d=kb.documents[x.p];return {percorso:x.p,cluster:d.c,cluster_label:(kb.clusters[d.c]||{}).label,estratto:d.e};});
+}
+function relationsFor(kb,id){
+  var b1=(kb.relazioni.b1||[]).filter(function(r){return r.da&&r.da.id===id;}).slice(0,15).map(function(r){return {ruolo:r.a&&(r.a.valore||r.a.nome_canonico),documento:r.documento,data:r.data};});
+  var b2=(kb.relazioni.b2||[]).filter(function(r){return (r.a&&r.a.id===id)||(r.da&&r.da.id===id);}).slice(0,15).map(function(r){return {da:r.da&&(r.da.valore||r.da.nome_canonico),a:r.a&&(r.a.valore||r.a.nome_canonico),azione:clip(r.azione||r.descrizione||"",200),documento:r.documento};});
+  return {ruoli_dichiarati:b1,responsabile_azione:b2};
+}
+function avvisoTipoLabel(t){return {identificazione_incerta_persona:"Persona da identificare",abbreviazione_ambigua_sistema_tool:"Sigla ambigua",variante_nome_persona:"Variante di nome",variante_nome_sistema_tool:"Variante di nome",incoerenza_data:"Date incoerenti",possibile_aggiornamento_tema_non_incorporato:"Possibile aggiornamento di un tema",possibile_origine_anteriore_tema_tracciato:"Possibile origine anteriore di un tema",formato_non_supportato:"File non leggibili",duplicazione_contenuto:"Possibile duplicato",template_senza_data:"Documento senza data",ruolo_generico_non_persona:"Ruolo generico",cluster_fuori_perimetro:"Fuori perimetro",qualita_trascrizione:"Qualità della trascrizione",documento_superato_bozza:"Bozza superata",copertura_parziale_cluster:"Copertura",classificazione_incerta_avanzamento_vs_contenuto:"Classificazione incerta",entita_esclusa_troppo_generica:"Entità esclusa",correzione_dati:"Correzione dati",perimetro_accesso_non_trascritto_per_privacy:"Dati non trascritti (privacy)"}[t]||"Segnalazione";}
+var if_module=(typeof module!=="undefined");
+if(if_module){module.exports={buildIndex:buildIndex,textSearch:textSearch,findEntities:findEntities,entitySummary:entitySummary,searchCronistoria:searchCronistoria,coverageSummary:coverageSummary,docCard:docCard,searchCatalog:searchCatalog,relationsFor:relationsFor,toks:toks};}
+</script>
+
+<script>
+/* ============ interfaccia ============ */
+(function(){
+if(typeof document==="undefined")return;
+var $=function(id){return document.getElementById(id);};
+var S={kb:null,stato:null,idx:null,risposte:{},filter:"da_gestire",db:null,open:{}};
+function el(tag,attrs,kids){var n=document.createElement(tag);if(attrs)Object.keys(attrs).forEach(function(k){if(k==="class")n.className=attrs[k];else if(k==="text")n.textContent=attrs[k];else if(k.slice(0,2)==="on")n.addEventListener(k.slice(2),attrs[k]);else if(attrs[k]!==false&&attrs[k]!=null)n.setAttribute(k,attrs[k]===true?"":attrs[k]);});(kids||[]).forEach(function(c){if(c==null)return;n.appendChild(typeof c==="string"?document.createTextNode(c):c);});return n;}
+function clear(n){while(n.firstChild)n.removeChild(n.firstChild);}
+function fmtN(n){return n==null?"–":new Intl.NumberFormat("it-IT").format(n);}
+
+/* ---------- 1. Ultima elaborazione ---------- */
+var ESITO={aggiornata:["ok","Aggiornata"],nessuna_novita:["info","Nessuna novità"],errore:["crit","Errore"],nessun_dato:["info","Nessun dato"]};
+function renderEsito(){
+  var s=S.stato||{},e=ESITO[s.esito]||ESITO.nessun_dato,body=$("esito-body");clear(body);
+  var pill=$("esito-pill");clear(pill);pill.appendChild(el("span",{class:"pill "+e[0],text:e[1]}));
+  var head=el("div",{class:"row"},[
+    el("span",{text:s.data_run?fmtDate(s.data_run):"Data non disponibile"}),
+    s.tipo?el("span",{class:"pill acc",text:s.tipo==="automatico"?"Automatica":"Manuale"}):null]);
+  body.appendChild(head);
+  body.appendChild(el("p",{style:"margin:0",text:s.riepilogo||""}));
+  var nv=s.novita||{};
+  var groups=[["Nuovi","nuovi"],["Modificati","modificati"],["Spostati o mancanti","mancanti"],["Convertiti (.doc/.rtf)","convertiti"],["Non estraibili","non_estraibili"]];
+  var g=el("div",{class:"grid g-chg"});
+  groups.forEach(function(x){var l=nv[x[1]]||[];var d=el("details",null,[el("summary",null,[el("span",{text:x[0]}),el("span",{class:"num pill info",text:String(l.length)})])]);
+    if(l.length){var ul=el("ul");l.forEach(function(p){ul.appendChild(el("li",{class:"mono",text:p}));});d.appendChild(ul);}else d.appendChild(el("p",{class:"note",text:"Nessuno."}));g.appendChild(d);});
+  body.appendChild(g);
+  var c=s.conteggi;
+  if(c&&c.prima&&c.dopo){
+    var labels={documenti_estratti:"Documenti estratti",persone:"Persone",sistemi_tool:"Sistemi e tool",riferimenti_normativi:"Riferimenti normativi",timeline_voci:"Voci in timeline",avvisi:"Segnalazioni"};
+    var tb=el("tbody");Object.keys(labels).forEach(function(k){if(c.dopo[k]==null)return;var a=c.prima[k],b=c.dopo[k],dl=(a==null?0:b-a);
+      tb.appendChild(el("tr",null,[el("td",{text:labels[k]}),el("td",{class:"r num",text:fmtN(a)}),el("td",{class:"r num",text:fmtN(b)}),el("td",{class:"r num delta "+(dl>0?"up":"zero"),text:dl>0?"+"+dl:String(dl)})]));});
+    body.appendChild(el("div",{class:"tablewrap"},[el("table",null,[el("thead",null,[el("tr",null,[el("th",{text:"Prima/dopo l'elaborazione"}),el("th",{class:"r",text:"Prima"}),el("th",{class:"r",text:"Dopo"}),el("th",{class:"r",text:"Δ"})])]),tb])]));
+  }
+  if((s.errori||[]).length){var eb=el("div",{class:"err"});(s.errori).forEach(function(x){eb.appendChild(el("div",{text:typeof x==="string"?x:JSON.stringify(x)}));});body.appendChild(eb);}
+  if((s.risposte_applicate||[]).length){var ra=el("details",null,[el("summary",null,[el("span",{text:"Risposte applicate in questa elaborazione"}),el("span",{class:"num pill ok",text:String(s.risposte_applicate.length)})])]);var ul2=el("ul");s.risposte_applicate.forEach(function(x){ul2.appendChild(el("li",{text:typeof x==="string"?x:JSON.stringify(x)}));});ra.appendChild(ul2);body.appendChild(ra);}
+  var st=s.storico||[];
+  if(st.length){var h=el("details",null,[el("summary",null,[el("span",{text:"Storico delle elaborazioni"}),el("span",{class:"num pill info",text:String(st.length)})])]);var ul3=el("ul");st.slice(0,12).forEach(function(x){ul3.appendChild(el("li",null,[el("b",{text:fmtDate(x.data)+" · "}),document.createTextNode((x.tipo?x.tipo+" · ":"")+(ESITO[x.esito]?ESITO[x.esito][1]+". ":"")+(x.riepilogo||""))]));});h.appendChild(ul3);body.appendChild(h);}
+}
+
+/* ---------- 2. Punti da gestire ---------- */
+function respKey(a){return a.id;}
+function renderAvvisi(){
+  var av=(S.kb.cronistoria.avvisi||[]),tabs=$("avvisi-tabs"),list=$("avvisi-list");clear(tabs);clear(list);
+  var cnt={da_gestire:0,informativo:0,gestito:0};av.forEach(function(a){cnt[a.stato]=(cnt[a.stato]||0)+1;});
+  var pending=Object.keys(S.risposte).filter(function(k){return S.risposte[k]&&!S.risposte[k].applicata;}).length;
+  [["da_gestire","Da gestire"],["informativo","Informativi"],["gestito","Gestiti"],["tutti","Tutti"]].forEach(function(t){
+    var n=t[0]==="tutti"?av.length:cnt[t[0]]||0;
+    tabs.appendChild(el("button",{class:"tab",type:"button","aria-pressed":S.filter===t[0]?"true":"false",onclick:function(){S.filter=t[0];renderAvvisi();}},[t[1],el("span",{class:"n",text:String(n)})]));});
+  if(pending)tabs.appendChild(el("span",{class:"pill warn",text:pending+(pending===1?" risposta in attesa di applicazione":" risposte in attesa di applicazione")}));
+  var shown=av.filter(function(a){return S.filter==="tutti"||a.stato===S.filter;});
+  if(!shown.length){list.appendChild(el("div",{class:"empty",text:S.filter==="da_gestire"?"Nessun punto da gestire. Le nuove segnalazioni compariranno dopo il prossimo aggiornamento.":"Nessuna segnalazione in questa categoria."}));return;}
+  shown.forEach(function(a){list.appendChild(avvisoCard(a));});
+}
+function avvisoCard(a){
+  var stLabel={da_gestire:["warn","Da gestire"],informativo:["info","Informativa"],gestito:["ok","Gestita"]}[a.stato]||["info",""];
+  var docs=a.documenti_coinvolti||a.documenti||[];
+  var txt=el("p",{class:"txt"+((a.descrizione||"").length>380&&!S.open[a.id]?" clamp":""),text:a.descrizione||""});
+  var card=el("article",{class:"av "+a.stato,id:a.id},[
+    el("div",{class:"head"},[el("span",{class:"pill "+stLabel[0],text:stLabel[1]}),el("b",{text:avvisoTipoLabel(a.tipo)}),a.tema?el("span",{class:"muted",text:"· "+a.tema}):null]),txt]);
+  if((a.descrizione||"").length>380)card.appendChild(el("button",{class:"linkbtn",type:"button",onclick:function(){S.open[a.id]=!S.open[a.id];renderAvvisi();}},[S.open[a.id]?"Mostra meno":"Mostra tutto"]));
+  if(a.gestione)card.appendChild(el("div",{class:"note",text:"Gestione: "+a.gestione}));
+  if(docs.length){var d=el("details",null,[el("summary",null,[el("span",{text:"Documenti coinvolti"}),el("span",{class:"num pill info",text:String(docs.length)})])]);var ul=el("ul");docs.forEach(function(p){ul.appendChild(el("li",{class:"mono",text:p}));});d.appendChild(ul);card.appendChild(d);}
+  card.appendChild(replyBox(a));
+  return card;
+}
+function replyBox(a){
+  var r=S.risposte[a.id],box=el("div",{class:"reply"});
+  if(!S.db){box.appendChild(el("div",{class:"note",text:"Le risposte non sono disponibili in questa vista (serve aprire la pagina con il tuo account)."}));return box;}
+  if(r){box.appendChild(el("div",{class:"sent"+(r.applicata?" applied":""),text:(r.applicata?"Applicata alla KB il "+fmtDate(r.applicata_il)+". ":"Risposta inviata il "+fmtDate(r.ts)+": sarà applicata all'aggiornamento delle 13:00. ")+"“"+(r.esito?r.esito+" – ":"")+(r.testo||"")+"”"}));}
+  var sel=(r&&r.esito)||"Confermo";
+  var esiti=el("div",{class:"esiti",role:"group","aria-label":"Esito della risposta"});
+  ["Confermo","Non confermo","Nota"].forEach(function(x){var b=el("button",{class:"esito",type:"button","aria-pressed":x===sel?"true":"false",onclick:function(){sel=x;[].forEach.call(esiti.children,function(c){c.setAttribute("aria-pressed",c.textContent===x?"true":"false");});}},[x]);esiti.appendChild(b);});
+  var ta=el("textarea",{id:"ta-"+a.id,placeholder:"Scrivi la risposta o la correzione (es. “G2G = GasToGo”)"});
+  var send=el("button",{class:"btn",type:"button",text:r?"Aggiorna risposta":"Invia risposta"});
+  var msg=el("span",{class:"note"});
+  send.addEventListener("click",function(){
+    var testo=ta.value.trim();if(!testo&&sel==="Nota"){msg.textContent="Scrivi un testo.";return;}
+    send.disabled=true;msg.textContent="Salvo…";
+    var doc={avvisoId:a.id,tipo:a.tipo||null,estratto:(a.descrizione||"").slice(0,160),esito:sel,testo:testo,ts:new Date().toISOString(),applicata:false,storico:r?((r.storico||[]).concat([{esito:r.esito,testo:r.testo,ts:r.ts}]).slice(-10)):[]};
+    S.db.doc("risposte/"+a.id).set(doc).then(function(){S.risposte[a.id]=doc;renderAvvisi();}).catch(function(e){send.disabled=false;msg.textContent="Non sono riuscito a salvare ("+((e&&(e.code||e.message))||"errore")+").";});
+  });
+  box.appendChild(esiti);box.appendChild(ta);box.appendChild(el("div",{class:"row"},[send,msg]));
+  return box;
+}
+function docsOf(snap){if(!snap)return [];if(Array.isArray(snap))return snap;if(snap.docs)return snap.docs;var o=[];if(typeof snap.forEach==="function")snap.forEach(function(d){o.push(d);});return o;}
+function dataOf(d){if(d&&typeof d.data==="function")return d.data();if(d&&d.data&&typeof d.data==="object")return d.data;return d;}
+function initDb(){
+  if(!window.claude||!window.claude.use)return Promise.resolve();
+  return window.claude.use("db").then(function(db){
+    if(!db)return;S.db=db;
+    try{db.collection("risposte").onSnapshot(function(snap){var m={};docsOf(snap).forEach(function(d){var x=dataOf(d);if(x&&x.avvisoId)m[x.avvisoId]=x;});S.risposte=m;if(S.kb){renderAvvisi();updateBadges();}},function(){});}catch(e){}
+    if(S.kb)renderAvvisi();
+  }).catch(function(){});
+}
+
+/* ---------- 3. Numeri ---------- */
+function tile(v,l){return el("div",{class:"tile"},[el("b",{text:fmtN(v)}),el("span",{text:l})]);}
+function renderNumeri(){
+  var s=S.kb.stats,b=$("numeri-body");clear(b);
+  var pc=Math.round(100*s.documenti_estratti/Math.max(1,s.documenti_indicizzati));
+  b.appendChild(el("div",{class:"row"},[el("b",{class:"num",style:"font-size:18px",text:fmtN(s.documenti_estratti)+" di "+fmtN(s.documenti_indicizzati)+" documenti elaborati ("+pc+"%)"})]));
+  var w=function(n){return (100*n/Math.max(1,s.documenti_indicizzati)).toFixed(2)+"%";};
+  b.appendChild(el("div",{class:"bar",role:"img","aria-label":"Copertura documenti"},[el("i",{class:"a",style:"width:"+w(s.estratti_avanzamento)}),el("i",{class:"c",style:"width:"+w(s.estratti_contenuto)})]));
+  b.appendChild(el("div",{class:"legend"},[el("span",null,[el("s",{style:"background:var(--accent)"}),"Avanzamento ("+s.estratti_avanzamento+")"]),el("span",null,[el("s",{style:"background:color-mix(in srgb,var(--accent) 45%,var(--surface))"}),"Contenuto ("+s.estratti_contenuto+")"]),el("span",null,[el("s",{style:"background:var(--info-soft);border:1px solid var(--line)"}),"Non elaborati ("+s.non_elaborati+")"])]));
+  var g=el("div",{class:"grid g-stats"});
+  [[s.persone,"Persone"],[s.sistemi_tool,"Sistemi e tool"],[s.riferimenti_normativi,"Riferimenti normativi"],[s.menzioni,"Menzioni nei documenti"],[s.timeline_voci,"Voci in timeline"],[s.temi_tracciati,"Temi tracciati"],[(s.archi_b1||0)+(s.archi_b2||0),"Relazioni dichiarate"],[s.avvisi_da_gestire,"Punti da gestire"]].forEach(function(x){g.appendChild(tile(x[0],x[1]));});
+  b.appendChild(g);
+  if(s.timeline_dal)b.appendChild(el("p",{class:"note",text:"La cronistoria copre le decisioni dal "+fmtDate(s.timeline_dal)+" al "+fmtDate(s.timeline_al)+". Dati generati il "+fmtDate(s.generato_il)+"."}));
+  // non elaborati con motivazione
+  b.appendChild(el("h3",{text:"Documenti non elaborati e motivazione"}));
+  var byM={};(S.kb.non_elaborati||[]).forEach(function(x){(byM[x.motivo]=byM[x.motivo]||[]).push(x);});
+  var ks=Object.keys(byM).sort(function(a,c){return byM[c].length-byM[a].length;});
+  if(!ks.length)b.appendChild(el("div",{class:"empty",text:"Tutti i documenti indicizzati sono stati elaborati."}));
+  ks.forEach(function(k){var d=el("details",null,[el("summary",null,[el("span",{text:k}),el("span",{class:"num pill info",text:String(byM[k].length)})])]);var ul=el("ul");byM[k].forEach(function(x){ul.appendChild(el("li",null,[el("span",{class:"mono",text:x.documento}),el("span",{class:"muted",text:"  · cluster "+x.cluster})]));});d.appendChild(ul);b.appendChild(d);});
+  // per cluster
+  var pcl=(S.kb.per_cluster||[]).slice().sort(function(a,c){return (c.totale-c.estratti)-(a.totale-a.estratti)||(c.totale-a.totale);});
+  var tb=el("tbody");pcl.forEach(function(c){var p=c.totale?100*c.estratti/c.totale:0;tb.appendChild(el("tr",null,[el("td",{text:c.id}),el("td",{text:c.label}),el("td",{text:c.tipo||"–"}),el("td",{class:"r num",text:c.estratti+" / "+c.totale}),el("td",null,[el("div",{class:"mini"},[el("i",{style:"width:"+p+"%"})])])]));});
+  var cd=el("details",null,[el("summary",null,[el("span",{text:"Copertura per cluster"}),el("span",{class:"num pill info",text:String(pcl.length)})]),el("div",{class:"tablewrap"},[el("table",null,[el("thead",null,[el("tr",null,[el("th",{text:"Cluster"}),el("th",{text:"Etichetta"}),el("th",{text:"Tipo"}),el("th",{class:"r",text:"Estratti"}),el("th",{text:""})])]),tb])])]);
+  b.appendChild(cd);
+}
+
+/* ---------- 4. Interrogazione ---------- */
+var ESEMPI=["Cosa è stato deciso sui ruoli di Data Owner e Data Steward e come si è arrivati alla circolare di nomina?","Chi è il Data Owner proposto per Metering Mass Market e Grandi Utenze?","Quali sistemi alimentano il perimetro dati Metering?","Quali punti sono emersi nella sessione Metering del 22 settembre 2026?"];
+var ISTRUZIONI="Sei l'interfaccia di interrogazione di una knowledge base documentale (Progetto Data Governance Italgas/Bludigit) costruita da una pipeline a 5 fasi: Catalogo, Estrazione (fatti per documento), Knowledge Layer (entità canoniche con menzioni), Cronistoria (decisioni nel tempo, catene di aggiornamento, avvisi di qualità). Rispondi in italiano, in modo diretto e concreto.\n\nMETODO (percorri le fasi al contrario, dal più sintetico al documento):\n1. Prima chiama `copertura` una volta per sapere cosa è stato elaborato.\n2. Espandi mentalmente la domanda in 3-5 varianti (sigle, sinonimi, termini tecnici/gergali) e usale nelle ricerche; se la domanda ha più sotto-temi, cercali uno per uno.\n3. `cronistoria`: temi tracciati (catena decisione precedente → successiva → aggiornamenti), avvisi di qualità e timeline. Per l'evoluzione di una decisione parti da qui.\n4. `entita` per persone, sistemi/tool, normative (nome e alias): dà le menzioni più recenti con documento e data. `relazioni` per ruoli dichiarati.\n5. Se il match esatto non basta o è a vuoto usa `cerca_testo` (TF-IDF sui testi di Estrazione) per ogni sotto-tema, poi conferma aprendo il documento con `scheda_documento`. Punteggi bassi (<0.15) vanno verificati a mano.\n6. Per temi in cluster non coperti usa `cerca_catalogo` e dillo: 'non ancora elaborato' non è 'non esiste'.\n\nREGOLE: cita sempre documento (percorso relativo) e data per ogni affermazione; se i documenti si contraddicono vince il più recente, ma con 3 o più candidati o date parziali mostra i 2-3 più recenti con le date; riporta i caveat degli avvisi di qualità sui documenti usati e le correzioni registrate (hanno la precedenza); non inventare nulla che gli strumenti non restituiscono; se l'informazione manca dillo. Risposta breve: poche righe o elenco puntato, poi una riga 'Fonti' con i percorsi.";
+function tools(){
+  var kb=S.kb;
+  var wrap=function(name,description,props,fn,req){return {name:name,description:description,inputSchema:{type:"object",properties:props,required:req||[]},execute:function(input){log(name+(input&&input.query?" · "+input.query:input&&input.percorso?" · "+input.percorso.split("/").pop():input&&input.id?" · "+input.id:""));var out=fn(input||{});var s=JSON.stringify(out);return s.length>9000?s.slice(0,9000)+"…[troncato]":out;}};};
+  return [
+   wrap("copertura","Copertura reale: documenti elaborati per cluster e motivi dei non elaborati.",{},function(){return coverageSummary(kb);}),
+   wrap("cronistoria","Cerca nella Cronistoria: temi tracciati con catena di aggiornamenti, avvisi di qualità e timeline delle decisioni.",{query:{type:"string"}},function(i){return searchCronistoria(kb,i.query||"");},["query"]),
+   wrap("entita","Cerca persone, sistemi/tool, riferimenti normativi per nome o alias; restituisce le menzioni più recenti con documento e data.",{query:{type:"string"},tipo:{type:"string",description:"persona | sistema_tool | riferimento_normativo (facoltativo)"}},function(i){return findEntities(kb,i.query||"",i.tipo).map(entitySummary);},["query"]),
+   wrap("relazioni","Ruoli dichiarati e responsabili di azioni per un'entità (id dal risultato di `entita`).",{id:{type:"string"}},function(i){return relationsFor(kb,i.id||"");},["id"]),
+   wrap("cerca_testo","Ricerca lessicale TF-IDF sui testi di Estrazione (argomento, contenuti, decisioni, parole chiave). Restituisce i documenti più simili con punteggio.",{query:{type:"string"},top:{type:"number"}},function(i){return textSearch(S.idx,i.query||"",Math.min(i.top||8,12)).map(function(x){return {percorso:x.d.path,tipo:x.d.tipo,data:dateOfRec(x.d.tipo,x.d.rec),punteggio:Math.round(x.score*1000)/1000,argomento:clip(x.d.rec.argomento||(x.d.rec.contenuti_trattati||[]).slice(0,2).join("; "),260)};});},["query"]),
+   wrap("scheda_documento","Scheda completa di Estrazione per un documento (percorso relativo), con cluster, avvisi e correzioni su quel documento.",{percorso:{type:"string"}},function(i){return docCard(kb,i.percorso||"");},["percorso"]),
+   wrap("cerca_catalogo","Cerca documenti per nome file o etichetta di cluster nel Catalogo, anche non elaborati.",{query:{type:"string"}},function(i){return searchCatalog(kb,i.query||"");},["query"])
+  ];
+}
+var steps=[];function log(t){steps.push(t);var n=$("ans-steps");if(n){n.appendChild(el("div",{text:"› "+t}));}}
+function inline(txt){var f=document.createDocumentFragment();String(txt).split(/(\*\*[^*]+\*\*|`[^`]+`)/).forEach(function(p){if(!p)return;if(p.slice(0,2)==="**"&&p.slice(-2)==="**")f.appendChild(el("b",{text:p.slice(2,-2)}));else if(p[0]==="`"&&p.slice(-1)==="`")f.appendChild(el("code",{text:p.slice(1,-1)}));else f.appendChild(document.createTextNode(p));});return f;}
+function renderMd(node,text){clear(node);var blocks=String(text||"").replace(/\r/g,"").split(/\n{2,}/);blocks.forEach(function(bl){var lines=bl.split("\n").filter(function(l){return l.trim();});if(!lines.length)return;
+  if(lines.every(function(l){return /^\s*([-*•]|\d+[.)])\s+/.test(l);})){var ul=el("ul");lines.forEach(function(l){var li=el("li");li.appendChild(inline(l.replace(/^\s*([-*•]|\d+[.)])\s+/,"")));ul.appendChild(li);});node.appendChild(ul);}
+  else{var p=el("p");lines.forEach(function(l,i){if(i)p.appendChild(el("br"));p.appendChild(inline(l.replace(/^#{1,4}\s+/,"")));});node.appendChild(p);}});}
+function sources(text){var out=[];Object.keys(S.kb.documents).forEach(function(p){if(text.indexOf(p)>-1)out.push(p);});return out.slice(0,14);}
+var busy=false;
+function ask(){
+  if(busy)return;var q=$("q").value.trim();if(!q){$("ask-state").textContent="Scrivi una domanda.";return;}
+  var out=$("ans");clear(out);steps=[];
+  window.claude.use("sample").then(function(sample){
+    if(!sample){out.appendChild(el("div",{class:"err",text:"L'interrogazione non è disponibile in questa vista: apri la pagina dal tuo account Claude."}));return;}
+    busy=true;$("ask-btn").disabled=true;$("ask-state").textContent="Sto cercando…";
+    var box=el("div",{class:"answer"});var stepsN=el("div",{class:"steps",id:"ans-steps"});var txt=el("div");var srcN=el("div",{class:"srcs"});
+    box.appendChild(txt);box.appendChild(srcN);var det=el("details",null,[el("summary",null,[el("span",{text:"Dove ho cercato"})]),stepsN]);out.appendChild(box);out.appendChild(det);
+    txt.appendChild(el("span",{class:"note",text:"Ricerca in corso…"}));
+    var ctx="Knowledge base aggiornata al "+fmtDate(S.kb.stats.generato_il)+": "+S.kb.stats.documenti_estratti+" documenti elaborati su "+S.kb.stats.documenti_indicizzati+".";
+    return sample(ISTRUZIONI+"\n\n"+ctx+"\n\nDOMANDA: "+q,{tools:tools(),cache:false,modelTier:"default",onText:function(r){renderMd(txt,r.text);}}).then(function(r){
+      renderMd(txt,r.text);var s=sources(r.text);if(s.length){srcN.appendChild(el("div",{class:"eyebrow",text:"Documenti citati"}));s.forEach(function(p){srcN.appendChild(el("div",{class:"mono",text:p}));});}
+      if(r.truncated)srcN.appendChild(el("div",{class:"note",text:"La risposta è stata troncata: riformula la domanda in modo più specifico."}));
+      $("ask-state").textContent="";
+    });
+  }).catch(function(e){var m=e&&e.code==="not_granted"?"Consenso non concesso: la funzione non può rispondere.":e&&e.code==="rate_limited"?"Troppe richieste ravvicinate: riprova tra poco.":"Non sono riuscito a rispondere ("+((e&&(e.message||e.code))||"errore")+").";out.appendChild(el("div",{class:"err",text:m}));$("ask-state").textContent="";}).then(function(){busy=false;$("ask-btn").disabled=false;});
+}
+function initAsk(){
+  var c=$("chips");ESEMPI.forEach(function(x,i){c.appendChild(el("button",{class:"chip",type:"button",id:"chip-"+i,text:x,onclick:function(){$("q").value=x;$("q").focus();}}));});
+  $("ask-btn").addEventListener("click",ask);
+  $("q").addEventListener("keydown",function(e){if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))ask();});
+}
+
+
+/* ---------- sezioni a comparsa e notifiche ---------- */
+function setSec(id,open){var b=$("h-"+id),c=$("b-"+id);if(!b||!c)return;b.setAttribute("aria-expanded",open?"true":"false");if(open)c.removeAttribute("hidden");else c.setAttribute("hidden","");}
+function toggleSec(id){var b=$("h-"+id);setSec(id,b.getAttribute("aria-expanded")!=="true");}
+function openSec(id){setSec(id,true);var s=$("sec-"+id);if(s&&s.scrollIntoView)s.scrollIntoView({behavior:"smooth",block:"start"});}
+function badge(id,n,cls){var b=$(id);if(!b)return;b.textContent=n?String(n):"";b.className="badge"+(cls?" "+cls:"")+(n?" on":"");}
+function updateBadges(){
+  if(!S.kb)return;var av=S.kb.cronistoria.avvisi||[],dg=av.filter(function(a){return a.stato==="da_gestire"&&!(S.risposte[a.id]);}).length;
+  badge("bd-avvisi",dg,"warn");var p=$("avvisi-pill");if(p){clear(p);if(dg)p.appendChild(el("span",{class:"pill warn",text:dg+(dg===1?" da gestire":" da gestire")}));}
+  var e=ESITO[(S.stato||{}).esito];var ep=$("bd-esito");if(ep){ep.textContent=e?e[1]:"";ep.className="badge"+(e&&e[0]==="crit"?" crit":"")+(e?" on":"");}
+  badge("bd-numeri",S.kb.stats.non_elaborati?S.kb.stats.non_elaborati+" non elaborati":"","");
+}
+function initSections(){
+  ["esito","avvisi","numeri","ask"].forEach(function(id){$("h-"+id).addEventListener("click",function(){toggleSec(id);});});
+  [].forEach.call(document.querySelectorAll(".qbtn"),function(b){b.addEventListener("click",function(){var id=b.getAttribute("data-sec"),h=$("h-"+id);if(h.getAttribute("aria-expanded")==="true"){setSec(id,false);}else openSec(id);});});
+}
+
+/* ---------- avvio ---------- */
+function fail(msg){["esito-body","numeri-body"].forEach(function(id){var n=$(id);clear(n);n.appendChild(el("div",{class:"err",text:msg}));});$("avvisi-list").appendChild(el("div",{class:"err",text:msg}));}
+function load(){
+  initSections();initAsk();
+  Promise.all([fetch("data/kb.json").then(function(r){if(!r.ok)throw new Error("kb.json "+r.status);return r.json();}),fetch("data/stato.json").then(function(r){return r.ok?r.json():{};}).catch(function(){return {};})]).then(function(a){
+    S.kb=a[0];S.stato=a[1];S.idx=buildIndex(S.kb);
+    $("stamp").textContent="Dati del "+fmtDate(S.kb.stats.generato_il);
+    renderEsito();renderNumeri();renderAvvisi();updateBadges();initDb();
+  }).catch(function(e){fail("Non riesco a caricare i dati della knowledge base ("+(e&&e.message||"errore")+"). Riapri la pagina o attendi il prossimo aggiornamento.");});
+}
+load();
+})();
+</script>
