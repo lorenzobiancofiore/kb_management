@@ -149,6 +149,44 @@ Se la domanda riguarda "chi fa cosa" o "che sistemi sono coinvolti in un
 processo", questo livello spesso basta da solo, incrociando più entità
 (es. tutte le persone/sistemi che compaiono negli stessi documenti).
 
+## Passo 3ter — Campi, logica di calcolo, lineage e ingestione (se la KB ha i profili)
+
+Se il Knowledge Layer contiene le liste `oggetti_dati`, `report` e
+`ingestione_sistema` (e Relazioni la lista `livello_b_lineage`), usale per le
+domande che chiedono **fatti strutturati** invece di "dove si parla di X":
+
+- **Campi di una vista/tabella** → `oggetti_dati`: cerca per
+  `nome_canonico`/`alias`; la risposta sta in `campi` (nome, tipo,
+  descrizione, chiave, origine), `sistema_origine`, `relazioni`,
+  `logica_filtri`. Se non trovi l'oggetto, cerca il nome del campo tra i
+  `campi` di tutti gli oggetti.
+- **Logica di calcolo di un KPI/report** → `report`: leggi `versioni`
+  (una per documento, la più recente prima) e il KPI con la sua
+  `logica_calcolo`, `filtri`, `dimensioni`, `fonti`,
+  `riferimento_normativo`. Riporta la formula come scritta.
+- **Lineage** ("da dove arrivano i dati di X", "cosa usa il report Y") →
+  `livello_b_lineage` filtrato per `id` (archi `fonte_dati_report`,
+  `origina_da_sistema`, `deriva_da`, `join_con`, `fk_con`, `ingerito_da`);
+  `risolto: false` significa nome non riconosciuto come entità.
+- **Stato ingestione di un sistema** → `ingestione_sistema`: stato,
+  modalità, frequenza e oggetti per documento, il più recente prima.
+
+Regole di risposta specifiche:
+
+- Se `logica_calcolo` manca, di' che il documento non la riporta; non
+  ricostruirla dal nome del KPI o dei campi.
+- Se più documenti descrivono diversamente lo stesso KPI o campo
+  (`descrizioni_alternative`, più `versioni`), mostra la differenza e indica
+  il più recente; non fonderli.
+- Se `n_campi` è maggiore dei campi mostrati, o l'entità ha `avvisi` di
+  troncamento, dichiara che l'elenco può essere parziale e rimanda al
+  documento sorgente.
+- Le date dei profili sono spesso la data di modifica del file
+  (`fonte_data: "data_modifica_file (approssimata)"`): se l'ordine "più
+  recente" è decisivo, segnalalo.
+- Se la KB non ha profili (liste assenti), ripiega su Estrazione e testo
+  del documento e dì che i dati strutturati non sono disponibili.
+
 ## Passo 3bis — Fallback lessicale (TF-IDF) quando il match esatto non basta
 
 Se dopo Passo 2 e Passo 3 (con tutte le varianti del Passo 1) non hai

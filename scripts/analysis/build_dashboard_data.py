@@ -129,9 +129,26 @@ def main():
     conta_av = Counter(a["stato"] for a in avvisi)
 
     # ---- relazioni: solo livelli B (il livello A pesa molto e non serve per interrogare)
-    relB = {"b1": rel.get("livello_b1_ruolo_dichiarato", []), "b2": rel.get("livello_b2_responsabile_azione", [])}
+    relB = {"b1": rel.get("livello_b1_ruolo_dichiarato", []), "b2": rel.get("livello_b2_responsabile_azione", []),
+            "lineage": [{k: v for k, v in a.items() if k != "livello"} for a in rel.get("livello_b_lineage", [])]}
 
-    timeline = cr.get("timeline_decisioni_cluster1", [])
+    # profili (campi, KPI, lineage, ingestione): vivono nel Knowledge Layer; in Estrazione restano solo come indice testuale
+    profili_idx = {}
+    for sec in ("avanzamento", "contenuto"):
+        for doc, r in est.get(sec, {}).items():
+            pr = r.pop("profilo", None)
+            if not pr:
+                continue
+            t = []
+            for o in pr.get("oggetti_dati", []):
+                t.append(o.get("nome", "") + " " + " ".join(c.get("nome", "") for c in o.get("campi", [])[:80]))
+            for rp in pr.get("report", []):
+                t.append(rp.get("nome", "") + " " + " ".join(k.get("nome", "") for k in rp.get("kpi", [])))
+            for g in pr.get("ingestione_sistema", []):
+                t.append(g.get("sistema", ""))
+            profili_idx[doc] = " ".join(t)[:6000]
+
+    timeline = next((v for k, v in cr.items() if k.startswith("timeline_decisioni")), [])
     date_iso = [v["data"] for v in timeline if v.get("data") and re.match(r"^\d{4}-\d{2}-\d{2}$", str(v["data"]))]
     stats = {
         "generato_il": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -157,6 +174,10 @@ def main():
         "archi_b1": len(relB["b1"]),
         "archi_b2": len(relB["b2"]),
         "archi_a": (rel.get("meta") or {}).get("n_archi_livello_a"),
+        "oggetti_dati": len(kl.get("oggetti_dati", [])),
+        "report": len(kl.get("report", [])),
+        "ingestione_sistemi": len(kl.get("ingestione_sistema", [])),
+        "archi_lineage": len(relB["lineage"]),
         "correzioni_attive": len([c for c in (corr or {}).get("correzioni", []) if not c.get("superata")]) if isinstance(corr, dict) else 0,
     }
 
@@ -169,6 +190,8 @@ def main():
         "clusters": clusters,
         "documents": docs,
         "estrazione": est,
+        "profili_idx": profili_idx,
+        "aree": {k: {"label": v.get("label"), "tipo": v.get("tipo"), "n": v.get("n_documenti")} for k, v in (cat.get("aree_proposte") or {}).items()},
         "kl": kl,
         "cronistoria": {
             "timeline": timeline,

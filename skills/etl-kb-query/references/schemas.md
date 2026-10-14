@@ -164,3 +164,36 @@ stata costruita partendo da un sottoinsieme del corpus (un pilota), non
 dall'intero catalogo — da qui l'importanza di controllare la copertura
 reale con `locate_kb.py` prima di trattare l'assenza di un'informazione
 come "non esiste" invece che "non è stata ancora processata".
+
+## Profili strutturati (opzionali): data model, reportistica, lineage, ingestione
+
+Presenti solo se la KB è stata costruita con i profili di estrazione (vedi `etl-kb-build`, B2/B3bis).
+
+**Estrazione**: ogni record può avere un campo `profilo` con le liste `oggetti_dati`, `report`,
+`ingestione_sistema` (fatti dichiarati dal documento, con `evidenza` e `avvisi`).
+
+**Knowledge Layer** (liste aggiuntive accanto a `persone`, `sistemi_tool`, `riferimenti_normativi`):
+
+```json
+"oggetti_dati": [{"id": "oggetto-...", "tipo": "oggetto_dati", "nome_canonico": "", "alias": [],
+  "tipo_oggetto": "tabella|vista|...", "sistema_origine": "", "descrizione": "", "n_campi": 0,
+  "campi": [{"nome": "", "tipo": "", "descrizione": "", "chiave": false, "origine": "",
+             "documenti": [], "descrizioni_alternative": [{"documento": "", "descrizione": ""}]}],
+  "chiavi": [], "relazioni": [{"con": "", "tipo": "", "condizione": "", "documento": ""}],
+  "logica_filtri": "", "menzioni": [], "avvisi": [{"documento": "", "avviso": ""}], "ultima_menzione": {}}],
+"report": [{"id": "report-...", "tipo": "report", "nome_canonico": "", "alias": [], "scopo": "", "n_kpi": 0,
+  "versioni": [{"documento": "", "data": "", "kpi": [{"nome": "", "logica_calcolo": "", "filtri": [],
+                "dimensioni": [], "fonti": [], "riferimento_normativo": ""}], "fonti_dati": [],
+                "filtri_visuali": [], "stato": "", "avvisi": []}], "menzioni": []}],
+"ingestione_sistema": [{"id": "ingestione-...", "nome_canonico": "", "sistema_id": null,
+  "versioni": [{"documento": "", "data": "", "oggetti": [], "modalita": "", "frequenza": "", "stato": "", "note": ""}]}]
+```
+
+**Relazioni**: lista `livello_b_lineage`, archi
+`{tipo_relazione, da, a, documento, data, evidenza_testuale}` con `tipo_relazione` in
+`fonte_dati_report | origina_da_sistema | deriva_da | join_con | fk_con | ingerito_da`;
+`da`/`a` sono `{id, tipo, nome_canonico, risolto: true}` oppure `{tipo: "testo_libero", valore, risolto: false}`.
+Per `ingerito_da` il verso è oggetto → sistema.
+
+**Catalogo**: `aree_proposte` = `{<percorso area>: {label, tipo, stato, n_documenti, documenti}}`
+(overlay per cartella dei documenti, da confermare; non sostituisce i cluster).

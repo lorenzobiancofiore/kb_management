@@ -174,6 +174,7 @@ function buildIndex(kb){
     ["argomento","sotto_tipo"].forEach(function(k){if(r[k])parts.push(r[k]);});
     ["contenuti_trattati","decisioni","rischi_blocchi","prossimi_passi","processi_attivita","ruoli_responsabilita","sistemi_tool_citati","riferimenti_normativi","parole_chiave","partecipanti"].forEach(function(k){if(Array.isArray(r[k]))parts.push(r[k].join(" "));});
     (r.action_item||[]).forEach(function(a){parts.push((a.responsabile||"")+" "+(a.descrizione||""));});
+    var pr=(kb.profili_idx&&kb.profili_idx[p])||null;if(pr)parts.push(pr);
     var tk=toks(parts.join(" ")),tf={};tk.forEach(function(w){tf[w]=(tf[w]||0)+1;});
     Object.keys(tf).forEach(function(w){df[w]=(df[w]||0)+1;});
     docs.push({path:p,tipo:t,rec:r,tf:tf,len:tk.length});
@@ -240,6 +241,53 @@ function relationsFor(kb,id){
   var b1=(kb.relazioni.b1||[]).filter(function(r){return r.da&&r.da.id===id;}).slice(0,15).map(function(r){return {ruolo:r.a&&(r.a.valore||r.a.nome_canonico),documento:r.documento,data:r.data};});
   var b2=(kb.relazioni.b2||[]).filter(function(r){return (r.a&&r.a.id===id)||(r.da&&r.da.id===id);}).slice(0,15).map(function(r){return {da:r.da&&(r.da.valore||r.da.nome_canonico),a:r.a&&(r.a.valore||r.a.nome_canonico),azione:clip(r.azione||r.descrizione||"",200),documento:r.documento};});
   return {ruoli_dichiarati:b1,responsabile_azione:b2};
+}
+
+function nameScore(qt,e){var names=[e.nome_canonico].concat(e.alias||[]).map(normTxt),best=0;qt.forEach(function(t){var hit=0;names.forEach(function(nm){if(nm.split(/[^a-z0-9]+/).indexOf(t)>-1)hit=Math.max(hit,1);else if(nm.indexOf(t)>-1)hit=Math.max(hit,.6);});best+=hit;});return best/qt.length;}
+function findOggetti(kb,query,campo){
+  var qt=toks(query),res=[],list=(kb.kl.oggetti_dati||[]);
+  if(qt.length)list.forEach(function(e){var sc=nameScore(qt,e);if(sc>=0.5)res.push({e:e,score:sc});});
+  if(!res.length&&(campo||query)){var ct=toks(campo||query);list.forEach(function(e){var hits=(e.campi||[]).filter(function(c){var n=normTxt(c.nome);return ct.every(function(t){return n.indexOf(t)>-1;});});if(hits.length)res.push({e:e,score:.4,campi_trovati:hits.length});});}
+  res.sort(function(a,b){return b.score-a.score||(b.e.n_campi-a.e.n_campi);});return res.slice(0,5);
+}
+function oggettoSummary(x,campo){
+  var e=x.e,ct=campo?toks(campo):[],cs=(e.campi||[]);
+  if(ct.length)cs=cs.filter(function(c){var n=normTxt(c.nome+" "+(c.descrizione||""));return ct.every(function(t){return n.indexOf(t)>-1;});});
+  var tot=cs.length;
+  return {id:e.id,nome:e.nome_canonico,alias:(e.alias||[]).slice(0,6),tipo_oggetto:e.tipo_oggetto,sistema_origine:e.sistema_origine,descrizione:clip(e.descrizione,300),
+    n_campi_totali:e.n_campi,campi_mostrati:Math.min(tot,45),campi_corrispondenti:ct.length?tot:undefined,
+    campi:cs.slice(0,45).map(function(c){return {nome:c.nome,tipo:c.tipo,chiave:c.chiave||undefined,descrizione:clip(c.descrizione,110),origine:clip(c.origine,90),n_documenti:(c.documenti||[]).length,conflitti:c.descrizioni_alternative?c.descrizioni_alternative.length:undefined};}),
+    chiavi:(e.chiavi||[]).slice(0,8),relazioni:(e.relazioni||[]).slice(0,8).map(function(r){return {con:r.con,tipo:r.tipo,condizione:clip(r.condizione,160),documento:r.documento};}),
+    logica_filtri:clip(e.logica_filtri,400),documenti:(e.menzioni||[]).slice(0,6).map(function(m){return {documento:m.documento,data:m.data,campi:m.campi_nel_documento};}),
+    avvisi:(e.avvisi||[]).slice(0,3).map(function(a){return clip(a.avviso,160)+" ("+a.documento.split("/").pop()+")";}),
+    nota:"Date = data modifica file (approssimata); la fonte più recente è la prima. Il Knowledge Layer può contenere solo i primi campi di un documento troncato."};
+}
+function findReport(kb,query){
+  var qt=toks(query),res=[];if(!qt.length)return res;
+  (kb.kl.report||[]).forEach(function(e){var sc=nameScore(qt,e);var kp=0;e.versioni.forEach(function(v){(v.kpi||[]).forEach(function(k){if(k.nome){var n=normTxt(k.nome);if(qt.every(function(t){return n.indexOf(t)>-1;}))kp=1;}});});if(sc>=0.5||kp)res.push({e:e,score:Math.max(sc,kp*0.45)});});
+  res.sort(function(a,b){return b.score-a.score||(b.e.versioni.length-a.e.versioni.length);});return res.slice(0,5);
+}
+function reportSummary(x,kpiQ){
+  var e=x.e,kt=kpiQ?toks(kpiQ):[];
+  return {id:e.id,nome:e.nome_canonico,alias:(e.alias||[]).slice(0,6),scopo:clip(e.scopo,250),n_kpi:e.n_kpi,
+    versioni:e.versioni.slice(0,3).map(function(v){var kp=(v.kpi||[]);if(kt.length)kp=kp.filter(function(k){var n=normTxt((k.nome||"")+" "+(k.logica_calcolo||""));return kt.every(function(t){return n.indexOf(t)>-1;});});
+      return {documento:v.documento,data:v.data,stato:v.stato,fonti_dati:(v.fonti_dati||[]).slice(0,10),filtri_visuali:(v.filtri_visuali||[]).slice(0,8),n_kpi_nel_documento:(v.kpi||[]).length,
+        kpi:kp.slice(0,10).map(function(k){return {nome:k.nome,logica_calcolo:clip(k.logica_calcolo,420)||"(non dichiarata nel documento)",filtri:(k.filtri||[]).slice(0,6),dimensioni:(k.dimensioni||[]).slice(0,6),fonti:(k.fonti||[]).slice(0,6),riferimento_normativo:k.riferimento_normativo||undefined};}),
+        avvisi:(v.avvisi||[]).slice(0,2).map(function(a){return clip(a,140);})};}),
+    nota:"Se più versioni descrivono lo stesso KPI in modo diverso, vince il documento più recente ma segnala la differenza."};
+}
+function lineageFor(kb,id){
+  var L=(kb.relazioni.lineage||[]),name=function(n){return n.nome_canonico||n.valore||"";};
+  var up=L.filter(function(r){return r.da&&r.da.id===id;}).slice(0,40).map(function(r){return {relazione:r.tipo_relazione,verso:name(r.a),tipo:r.a.tipo,risolto:r.a.risolto,documento:r.documento,evidenza:clip(r.evidenza_testuale,110)};});
+  var down=L.filter(function(r){return r.a&&r.a.id===id;}).slice(0,40).map(function(r){return {relazione:r.tipo_relazione,da:name(r.da),tipo:r.da.tipo,documento:r.documento};});
+  return {usa_o_dipende_da:up,usato_da:down,nota:"Archi dichiarati nei documenti, senza inferenze. 'risolto:false' = nome non riconosciuto come entità della KB."};
+}
+function ingestioneFor(kb,query){
+  var qt=toks(query),res=[];(kb.kl.ingestione_sistema||[]).forEach(function(e){var sc=qt.length?nameScore(qt,e):0;if(sc>=0.5)res.push({e:e,score:sc});});
+  res.sort(function(a,b){return b.score-a.score;});
+  return res.slice(0,3).map(function(x){var e=x.e;return {sistema:e.nome_canonico,sistema_id:e.sistema_id,n_documenti:e.versioni.length,
+    versioni:e.versioni.slice(0,4).map(function(v){return {documento:v.documento,data:v.data,stato:v.stato,modalita:v.modalita,frequenza:v.frequenza,oggetti:(v.oggetti||[]).slice(0,25),n_oggetti:(v.oggetti||[]).length,note:clip(v.note,200)};}),
+    nota:"Lo stato più recente è nella prima versione; le date sono data modifica file (approssimata)."};});
 }
 function avvisoTipoLabel(t){return {identificazione_incerta_persona:"Persona da identificare",abbreviazione_ambigua_sistema_tool:"Sigla ambigua",variante_nome_persona:"Variante di nome",variante_nome_sistema_tool:"Variante di nome",incoerenza_data:"Date incoerenti",possibile_aggiornamento_tema_non_incorporato:"Possibile aggiornamento di un tema",possibile_origine_anteriore_tema_tracciato:"Possibile origine anteriore di un tema",formato_non_supportato:"File non leggibili",duplicazione_contenuto:"Possibile duplicato",template_senza_data:"Documento senza data",ruolo_generico_non_persona:"Ruolo generico",cluster_fuori_perimetro:"Fuori perimetro",qualita_trascrizione:"Qualità della trascrizione",documento_superato_bozza:"Bozza superata",copertura_parziale_cluster:"Copertura",classificazione_incerta_avanzamento_vs_contenuto:"Classificazione incerta",entita_esclusa_troppo_generica:"Entità esclusa",correzione_dati:"Correzione dati",perimetro_accesso_non_trascritto_per_privacy:"Dati non trascritti (privacy)"}[t]||"Segnalazione";}
 var if_module=(typeof module!=="undefined");
@@ -351,7 +399,7 @@ function renderNumeri(){
   b.appendChild(el("div",{class:"bar",role:"img","aria-label":"Copertura documenti"},[el("i",{class:"a",style:"width:"+w(s.estratti_avanzamento)}),el("i",{class:"c",style:"width:"+w(s.estratti_contenuto)})]));
   b.appendChild(el("div",{class:"legend"},[el("span",null,[el("s",{style:"background:var(--accent)"}),"Avanzamento ("+s.estratti_avanzamento+")"]),el("span",null,[el("s",{style:"background:color-mix(in srgb,var(--accent) 45%,var(--surface))"}),"Contenuto ("+s.estratti_contenuto+")"]),el("span",null,[el("s",{style:"background:var(--info-soft);border:1px solid var(--line)"}),"Non elaborati ("+s.non_elaborati+")"])]));
   var g=el("div",{class:"grid g-stats"});
-  [[s.persone,"Persone"],[s.sistemi_tool,"Sistemi e tool"],[s.riferimenti_normativi,"Riferimenti normativi"],[s.menzioni,"Menzioni nei documenti"],[s.timeline_voci,"Voci in timeline"],[s.temi_tracciati,"Temi tracciati"],[(s.archi_b1||0)+(s.archi_b2||0),"Relazioni dichiarate"],[s.avvisi_da_gestire,"Punti da gestire"]].forEach(function(x){g.appendChild(tile(x[0],x[1]));});
+  [[s.persone,"Persone"],[s.sistemi_tool,"Sistemi e tool"],[s.riferimenti_normativi,"Riferimenti normativi"],[s.menzioni,"Menzioni nei documenti"],[s.timeline_voci,"Voci in timeline"],[s.oggetti_dati,"Oggetti dati"],[s.report,"Report"],[s.temi_tracciati,"Temi tracciati"],[(s.archi_b1||0)+(s.archi_b2||0),"Relazioni dichiarate"],[s.avvisi_da_gestire,"Punti da gestire"]].forEach(function(x){g.appendChild(tile(x[0],x[1]));});
   b.appendChild(g);
   if(s.timeline_dal)b.appendChild(el("p",{class:"note",text:"La cronistoria copre le decisioni dal "+fmtDate(s.timeline_dal)+" al "+fmtDate(s.timeline_al)+". Dati generati il "+fmtDate(s.generato_il)+"."}));
   // non elaborati con motivazione
@@ -369,7 +417,7 @@ function renderNumeri(){
 
 /* ---------- 4. Interrogazione ---------- */
 var ESEMPI=["Cosa è stato deciso sui ruoli di Data Owner e Data Steward e come si è arrivati alla circolare di nomina?","Chi è il Data Owner proposto per Metering Mass Market e Grandi Utenze?","Quali sistemi alimentano il perimetro dati Metering?","Quali punti sono emersi nella sessione Metering del 22 settembre 2026?"];
-var ISTRUZIONI="Sei l'interfaccia di interrogazione di una knowledge base documentale (Progetto Data Governance Italgas/Bludigit) costruita da una pipeline a 5 fasi: Catalogo, Estrazione (fatti per documento), Knowledge Layer (entità canoniche con menzioni), Cronistoria (decisioni nel tempo, catene di aggiornamento, avvisi di qualità). Rispondi in italiano, in modo diretto e concreto.\n\nMETODO (percorri le fasi al contrario, dal più sintetico al documento):\n1. Prima chiama `copertura` una volta per sapere cosa è stato elaborato.\n2. Espandi mentalmente la domanda in 3-5 varianti (sigle, sinonimi, termini tecnici/gergali) e usale nelle ricerche; se la domanda ha più sotto-temi, cercali uno per uno.\n3. `cronistoria`: temi tracciati (catena decisione precedente → successiva → aggiornamenti), avvisi di qualità e timeline. Per l'evoluzione di una decisione parti da qui.\n4. `entita` per persone, sistemi/tool, normative (nome e alias): dà le menzioni più recenti con documento e data. `relazioni` per ruoli dichiarati.\n5. Se il match esatto non basta o è a vuoto usa `cerca_testo` (TF-IDF sui testi di Estrazione) per ogni sotto-tema, poi conferma aprendo il documento con `scheda_documento`. Punteggi bassi (<0.15) vanno verificati a mano.\n6. Per temi in cluster non coperti usa `cerca_catalogo` e dillo: 'non ancora elaborato' non è 'non esiste'.\n\nREGOLE: cita sempre documento (percorso relativo) e data per ogni affermazione; se i documenti si contraddicono vince il più recente, ma con 3 o più candidati o date parziali mostra i 2-3 più recenti con le date; riporta i caveat degli avvisi di qualità sui documenti usati e le correzioni registrate (hanno la precedenza); non inventare nulla che gli strumenti non restituiscono; se l'informazione manca dillo. Risposta breve: poche righe o elenco puntato, poi una riga 'Fonti' con i percorsi.";
+var ISTRUZIONI="Sei l'interfaccia di interrogazione di una knowledge base documentale (Progetto Data Governance Italgas/Bludigit) costruita da una pipeline a 5 fasi: Catalogo, Estrazione (fatti per documento), Knowledge Layer (entità canoniche con menzioni), Cronistoria (decisioni nel tempo, catene di aggiornamento, avvisi di qualità). Rispondi in italiano, in modo diretto e concreto.\n\nMETODO (percorri le fasi al contrario, dal più sintetico al documento):\n1. Prima chiama `copertura` una volta per sapere cosa è stato elaborato.\n2. Espandi mentalmente la domanda in 3-5 varianti (sigle, sinonimi, termini tecnici/gergali) e usale nelle ricerche; se la domanda ha più sotto-temi, cercali uno per uno.\n3. `cronistoria`: temi tracciati (catena decisione precedente → successiva → aggiornamenti), avvisi di qualità e timeline. Per l'evoluzione di una decisione parti da qui.\n4. `entita` per persone, sistemi/tool, normative (nome e alias): dà le menzioni più recenti con documento e data. `relazioni` per ruoli dichiarati.\n4bis. Domande su CAMPI di una vista/tabella, LOGICA DI CALCOLO di un KPI/report, LINEAGE (da dove arrivano i dati) o STATO INGESTION: usa `oggetto_dati`, `report`, `lineage` (con l\'id restituito) e `ingestione`, che leggono i profili strutturati estratti dai documenti. Riporta formule e nomi di campo come scritti nel documento, citando documento e data; se `logica_calcolo` non è dichiarata dì che il documento non la riporta, non ricostruirla. Se due documenti descrivono diversamente lo stesso KPI o campo, mostra la differenza e indica il più recente. Gli oggetti con `n_campi_totali` maggiore di quelli mostrati o con avvisi di troncamento sono parziali: dillo.\n5. Se il match esatto non basta o è a vuoto usa `cerca_testo` (TF-IDF sui testi di Estrazione) per ogni sotto-tema, poi conferma aprendo il documento con `scheda_documento`. Punteggi bassi (<0.15) vanno verificati a mano.\n6. Per temi in cluster non coperti usa `cerca_catalogo` e dillo: 'non ancora elaborato' non è 'non esiste'.\n\nREGOLE: cita sempre documento (percorso relativo) e data per ogni affermazione; se i documenti si contraddicono vince il più recente, ma con 3 o più candidati o date parziali mostra i 2-3 più recenti con le date; riporta i caveat degli avvisi di qualità sui documenti usati e le correzioni registrate (hanno la precedenza); non inventare nulla che gli strumenti non restituiscono; se l'informazione manca dillo. Risposta breve: poche righe o elenco puntato, poi una riga 'Fonti' con i percorsi.";
 function tools(){
   var kb=S.kb;
   var wrap=function(name,description,props,fn,req){return {name:name,description:description,inputSchema:{type:"object",properties:props,required:req||[]},execute:function(input){log(name+(input&&input.query?" · "+input.query:input&&input.percorso?" · "+input.percorso.split("/").pop():input&&input.id?" · "+input.id:""));var out=fn(input||{});var s=JSON.stringify(out);return s.length>9000?s.slice(0,9000)+"…[troncato]":out;}};};
@@ -380,6 +428,10 @@ function tools(){
    wrap("relazioni","Ruoli dichiarati e responsabili di azioni per un'entità (id dal risultato di `entita`).",{id:{type:"string"}},function(i){return relationsFor(kb,i.id||"");},["id"]),
    wrap("cerca_testo","Ricerca lessicale TF-IDF sui testi di Estrazione (argomento, contenuti, decisioni, parole chiave). Restituisce i documenti più simili con punteggio.",{query:{type:"string"},top:{type:"number"}},function(i){return textSearch(S.idx,i.query||"",Math.min(i.top||8,12)).map(function(x){return {percorso:x.d.path,tipo:x.d.tipo,data:dateOfRec(x.d.tipo,x.d.rec),punteggio:Math.round(x.score*1000)/1000,argomento:clip(x.d.rec.argomento||(x.d.rec.contenuti_trattati||[]).slice(0,2).join("; "),260)};});},["query"]),
    wrap("scheda_documento","Scheda completa di Estrazione per un documento (percorso relativo), con cluster, avvisi e correzioni su quel documento.",{percorso:{type:"string"}},function(i){return docCard(kb,i.percorso||"");},["percorso"]),
+   wrap("oggetto_dati","Scheda di una tabella/vista/dataset del data model: campi (nome, tipo, descrizione, chiave, origine), sistema di origine, relazioni/join, logica di costruzione, documenti. `campo` restringe i campi; se `query` non trova l'oggetto, cerca il campo in tutti gli oggetti.",{query:{type:"string",description:"nome dell'oggetto (es. V_CASHIN_HEADER_YTV) o del campo"},campo:{type:"string",description:"filtro sui campi (facoltativo)"}},function(i){return findOggetti(kb,i.query||"",i.campo).map(function(x){var o=oggettoSummary(x,i.campo);if(x.campi_trovati)o.corrispondenza="trovato per nome di campo";return o;});},["query"]),
+   wrap("report","Scheda di un report/dashboard: scopo, KPI con logica di calcolo (formula come scritta), filtri, dimensioni, fonti dati, riferimento normativo, per ogni documento (il più recente prima). `kpi` restringe ai KPI.",{query:{type:"string",description:"nome del report o del KPI"},kpi:{type:"string",description:"filtro sui KPI (facoltativo)"}},function(i){return findReport(kb,i.query||"").map(function(x){return reportSummary(x,i.kpi);});},["query"]),
+   wrap("lineage","Lineage dichiarato: per un report/oggetto dati (id da `report` o `oggetto_dati`) da quali viste, tabelle e sistemi dipende e da chi è usato.",{id:{type:"string"}},function(i){return lineageFor(kb,i.id||"");},["id"]),
+   wrap("ingestione","Stato e modalità di ingestione di un sistema sorgente (SAP, Salesforce, NET@2A...): oggetti ingeriti, modalità, frequenza, stato, per documento.",{query:{type:"string"}},function(i){return ingestioneFor(kb,i.query||"");},["query"]),
    wrap("cerca_catalogo","Cerca documenti per nome file o etichetta di cluster nel Catalogo, anche non elaborati.",{query:{type:"string"}},function(i){return searchCatalog(kb,i.query||"");},["query"])
   ];
 }

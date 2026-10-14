@@ -1,6 +1,6 @@
 ---
 name: "etl-kb-build"
-description: "Crea o estende la pipeline ETL documentale a 5 fasi (Indicizzazione, Catalogazione, Estrazione, Knowledge Layer, Cronistoria) più i passi derivati Relazioni e Rileva aggiornamenti su temi tracciati, più il passo di presentazione Ontology Viewer HTML. È il verso opposto di etl-kb-query (che legge, questa costruisce/aggiorna). Usa sempre questa skill quando l'utente vuole avviare da zero la pipeline su un progetto senza cartella Output/ETL_Documentale, oppure aggiungere nuovi documenti/cluster a una pipeline già esistente (es. \"ho caricato altri documenti, aggiorna la knowledge base\", \"estendi la pipeline con questi nuovi file\", \"fai partire l'ETL su questo nuovo progetto\"), anche se l'utente non nomina esplicitamente \"pipeline\" o le 5 fasi. NON usarla per rispondere a domande di contenuto sulla knowledge base già costruita — quello è compito di etl-kb-query."
+description: "Crea o estende la pipeline ETL documentale a 5 fasi (Indicizzazione, Catalogazione, Estrazione, Knowledge Layer, Cronistoria) più i passi derivati Relazioni e Rileva aggiornamenti su temi tracciati, più il passo di presentazione Ontology Viewer HTML, più i profili di estrazione guidati dalle domande dell'utente (campi di viste/tabelle, logica di calcolo dei KPI, lineage, stato di ingestione). È il verso opposto di etl-kb-query (che legge, questa costruisce/aggiorna). Usa sempre questa skill quando l'utente vuole avviare da zero la pipeline su un progetto senza cartella Output/ETL_Documentale, oppure aggiungere nuovi documenti/cluster a una pipeline già esistente (es. \"ho caricato altri documenti, aggiorna la knowledge base\", \"estendi la pipeline con questi nuovi file\", \"fai partire l'ETL su questo nuovo progetto\"), anche se l'utente non nomina esplicitamente \"pipeline\" o le 5 fasi. NON usarla per rispondere a domande di contenuto sulla knowledge base già costruita — quello è compito di etl-kb-query."
 ---
 
 # Costruire o estendere una knowledge base ETL documentale
@@ -83,6 +83,16 @@ con almeno un `index_*.json` e un `catalogo_*.json`.
    procedure, normative, formazione) — questa distinzione guida tutto lo
    schema di Estrazione a valle, non improvvisarla da solo se il documento
    rappresentativo è ambiguo.
+5bis. **Domande target e profili di estrazione** (vedi "Profili di
+   estrazione guidati dalle domande" in B2): prima di leggere i documenti
+   chiedi all'utente a quali domande di contenuto deve saper rispondere la
+   KB (con esempi: "i campi della vista X", "la logica di calcolo del KPI
+   Y", "da dove arrivano i dati del report Z", "stato di ingestione del
+   sistema W"). Se le domande vanno oltre "dov'è il documento su X",
+   definisci con l'utente i **profili** da estrarre oltre al riassunto
+   generico e proponi le **aree tematiche** (`aree_tematiche.py`) che
+   raggruppano i documenti per ambito. L'utente conferma o corregge: non
+   decidere da solo cosa conta.
 6. **Scegli un pilota**: non lanciarti su tutti i cluster in un colpo.
    Proponi all'utente un pilota di 2-4 cluster rappresentativi (idealmente
    almeno un cluster `avanzamento` e un paio di `contenuto`) per validare
@@ -228,6 +238,70 @@ Regole pratiche:
   parte dello schema pubblico della knowledge base: puoi cancellarlo a
   lotto completato, o lasciarlo come traccia per la prossima estensione.
 
+#### Profili di estrazione guidati dalle domande
+
+Lo schema generico di Estrazione (`argomento`, `sistemi_tool_citati`,
+`parole_chiave`...) basta per domande del tipo "dove si parla di X". Non
+basta per domande che chiedono **campi**, **logiche di calcolo**, **lineage**
+o **stato di ingestione**: quei fatti stanno nelle tabelle dei documenti e
+vanno estratti con uno schema dedicato. Il criterio è: lo schema segue le
+domande che l'utente ha dichiarato (passo 5bis di Modalità A), non il
+contrario. I cluster TF-IDF restano com'è; per raggruppare i documenti per
+ambito usa le aree tematiche (`aree_tematiche.py`, overlay `aree_proposte`
+nel catalogo, da confermare con l'utente).
+
+Profilo per documento, aggiunto come campo `profilo` accanto al record di
+Estrazione (tutte le liste sono opzionali; ometti ciò che il documento non
+contiene):
+
+```json
+{
+  "oggetti_dati": [{"nome": "", "tipo": "tabella|vista|vista_materializzata|dataset|file|altro",
+    "sistema_origine": "", "descrizione": "",
+    "campi": [{"nome": "", "tipo": "", "descrizione": "", "chiave": false, "origine": ""}],
+    "campi_totali": 0, "campi_omessi": false, "chiavi": [],
+    "relazioni": [{"con": "", "tipo": "join|fk|deriva_da", "condizione": ""}],
+    "logica_filtri": "", "evidenza": "foglio/sezione", "avvisi": []}],
+  "report": [{"nome": "", "scopo": "",
+    "kpi": [{"nome": "", "logica_calcolo": "formula come scritta", "filtri": [], "dimensioni": [],
+             "fonti": [], "riferimento_normativo": ""}],
+    "fonti_dati": [], "filtri_visuali": [], "stato": "", "evidenza": "", "avvisi": []}],
+  "ingestione_sistema": [{"sistema": "", "oggetti": [], "modalita": "", "frequenza": "",
+    "stato": "", "note": "", "evidenza": "", "avvisi": []}]
+}
+```
+
+Adatta i profili alle domande: se l'utente non chiede lineage, togli
+`relazioni`/`fonti`; se la KB serve altre domande (es. responsabilità per
+processo, SLA per servizio), definisci con lui il profilo corrispondente
+prima di lanciare l'Estrazione e non dopo.
+
+Regole di esecuzione, validate su Water (340 documenti):
+
+- **Testo letto**: sali a ~20.000 caratteri per documento (7.000 bastano
+  per i riassunti, non per i dizionari di campi). Segna `troncato: true` e
+  chiedi ai subagent di riportarlo in `avvisi`; non presentare un elenco di
+  campi troncato come completo.
+- **Batch**: ~190.000 caratteri per batch, documenti dello stesso ambito
+  (area) nello stesso batch, un file di istruzioni condiviso (schema +
+  regole) richiamato dal prompt di ogni subagent così da non ripeterlo.
+  **Massimo 20 subagent in parallelo**: con più batch lanciali a ondate.
+- **Regole anti-invenzione** nelle istruzioni: nomi, formule e relazioni
+  solo se scritti nel testo; formula assente = campo omesso (mai
+  ricostruita dal nome); lineage dedotto dal nome = `avvisi`, non fatto;
+  nessuna riga di dati personali o credenziali/token (descrivi la
+  struttura).
+- **Merge**: ogni subagent scrive `profili_part_N.json`; unisci per percorso
+  confrontando chiavi normalizzate (NFC, spazi multipli) perché i percorsi
+  del catalogo possono differire dal nome file reale per spaziatura.
+- **Verifica** con `verifica_profili.py`: misura quanti nomi di campi,
+  oggetti e KPI compaiono nel testo sorgente. Su Water: campi 98,9%,
+  oggetti 86%, nomi KPI 65% (i nomi KPI sono spesso normalizzati; la
+  formula resta da controllare a campione). I documenti sotto soglia vanno
+  rivisti o segnalati negli avvisi.
+- **Duplicati di nome** (stesso report o oggetto con nomi diversi, es.
+  prefissi `MV_EDP_`/`MV_WDP_`): non unirli in automatico, segnalali.
+
 ### B3 — Fase 4, Knowledge Layer: fondere le nuove entità in quelle esistenti
 
 Il Knowledge Layer normalizza persone/sistemi/normative sotto un
@@ -307,6 +381,37 @@ def append_menzione(ent, documento, tipo_documento, data, fonte_data, contesto):
         if not attuale or (re.fullmatch(r"\d{4}-\d{2}-\d{2}", attuale) and data > attuale):
             ent["ultima_menzione"] = {"documento": documento, "data": data}
 ```
+
+### B3bis — Profili → Knowledge Layer e lineage
+
+Se l'Estrazione contiene `profilo`, trasformalo in entità e archi con
+`costruisci_profili_kl.py` (generico, `--etl-dir`):
+
+```bash
+python3 costruisci_profili_kl.py --etl-dir "<.../Output/ETL_Documentale>"
+```
+
+Aggiunge al Knowledge Layer tre liste, senza toccare persone, sistemi e
+normative:
+
+- `oggetti_dati`: un'entità per nome (match case/spazi insensitive) con
+  `campi` aggregati per nome (campo → descrizione, tipo, chiave, origine,
+  `documenti`, `descrizioni_alternative` se i documenti divergono),
+  `relazioni`, `menzioni` per documento e `avvisi`.
+- `report`: un'entità per nome con `versioni` (una per documento, la più
+  recente prima per data modifica file) con KPI, `logica_calcolo`, fonti.
+  Più versioni con logiche diverse non vengono fuse: vince il documento
+  più recente, ma la differenza resta visibile.
+- `ingestione_sistema`: stato, modalità, frequenza e oggetti ingeriti per
+  sistema, per documento.
+
+E aggiunge a Relazioni la lista `livello_b_lineage` (archi `fonte_dati_report`,
+`origina_da_sistema`, `deriva_da`, `join_con`, `fk_con`, `ingerito_da`) con
+documento ed evidenza. Un nome che non coincide con un'entità nota resta
+testo (`risolto: false`): non indovinare la corrispondenza.
+
+`costruisci_profili_kl.py` va rilanciato **dopo** ogni rigenerazione di
+Knowledge Layer e Relazioni, perché quelle riscrivono i file da zero.
 
 ### B4 — Fase 5, Cronistoria: fondere la timeline e gli avvisi
 
@@ -485,6 +590,12 @@ in lettura, non in scrittura (stessa convenzione della Cronistoria).
   da un altro progetto del portfolio che lo ha (es. Governance) — è scritto
   per essere generico via argomenti CLI, nessun percorso o nome hardcoded.
 
+**Ordine di rigenerazione completo** (quando cambia Estrazione): Knowledge
+Layer → Cronistoria → `relazioni.py` → `costruisci_profili_kl.py` (se ci
+sono profili) → `genera_ontology_viewer.py` → `build_dashboard_data.py`
+(cruscotto). Rilanciare un passo a monte senza i successivi lascia i file
+a valle incoerenti.
+
 ## Trasparenza: la regola che vale in ogni fase
 
 Non risolvere mai in silenzio un'ambiguità o un'inferenza — che sia
@@ -540,6 +651,23 @@ Layer/Cronistoria, che sono lavoro di lettura e interpretazione):
   rilevazione) e non fonde mai nulla nella catena curata in automatico:
   si limita a segnalare in `avvisi_qualita_dati` con `tipo:
   "possibile_aggiornamento_tema_non_incorporato"`.
+
+- **Aree tematiche** (`aree_tematiche.py`): aggiunge al catalogo l'overlay
+  `aree_proposte` (documenti raggruppati per cartella, stato
+  `proposta_da_confermare`); non tocca i cluster né le aree già confermate.
+- **Profili → Knowledge Layer e lineage** (`costruisci_profili_kl.py`, vedi
+  B3bis): deriva `oggetti_dati`, `report`, `ingestione_sistema` e
+  `livello_b_lineage` dal campo `profilo` dell'Estrazione. Generico via
+  `--etl-dir`, nessuna inferenza.
+- **Verifica profili** (`verifica_profili.py`): controlla che nomi di
+  campi, oggetti e KPI compaiano nel testo sorgente dei batch.
+- **Cruscotto** (`scripts/analysis/build_dashboard_data.py` +
+  `dashboard/dashboard.html`): `build_dashboard_data.py` prepara
+  `data/kb.json` (toglie `profilo` dall'Estrazione e lo sposta in indice
+  testuale, porta lineage e aree) e la pagina espone gli strumenti
+  `oggetto_dati`, `report`, `lineage`, `ingestione` per le domande su
+  campi, KPI, lineage e ingestione. La timeline è letta dalla prima chiave
+  `timeline_decisioni*`.
 
 Se questi script esistono già in un altro progetto del portfolio, copiali
 as-is: sono scritti per essere generici (nessun percorso o nome hardcoded,
