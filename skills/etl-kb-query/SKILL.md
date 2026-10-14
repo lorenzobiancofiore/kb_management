@@ -171,6 +171,29 @@ domande che chiedono **fatti strutturati** invece di "dove si parla di X":
 - **Stato ingestione di un sistema** → `ingestione_sistema`: stato,
   modalità, frequenza e oggetti per documento, il più recente prima.
 
+**Dettaglio e completezza.** I profili sono riassunti: per domande su *come
+si calcola* un KPI, su esclusioni, filtri, regole per società o sistema,
+apri sempre il documento sorgente più recente (Passo 4a) o, nel cruscotto,
+usa lo strumento `passaggi` con più query ("esclusioni", "filtri", nome
+della società). Se il report compare con più nomi (es. "X", "X
+(documentazione dashboard)", "X NEPTA"), consulta tutte le entità e
+unisci le versioni per data prima di rispondere.
+
+**Schema di risposta per un KPI o un report**, in quest'ordine, saltando le
+voci che i documenti non trattano:
+
+1. definizione e formula;
+2. passi di calcolo;
+3. esclusioni e filtri;
+4. regole per società/sistema/fonte;
+5. viste e tabelle di origine, **solo** quelle dichiarate nei documenti
+   (una mappa KPI → vista non scritta nel testo è un'inferenza: dillo);
+6. versioni e differenze, con date (la data di modifica del file è
+   approssimata);
+7. avvisi e parti non lette (file non leggibili, testo troncato,
+   cluster non elaborati: descrivili per quello che sono davvero, non per
+   l'etichetta del cluster).
+
 Regole di risposta specifiche:
 
 - Se `logica_calcolo` manca, di' che il documento non la riporta; non

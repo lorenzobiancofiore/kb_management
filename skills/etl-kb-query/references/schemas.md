@@ -197,3 +197,10 @@ Per `ingerito_da` il verso è oggetto → sistema.
 
 **Catalogo**: `aree_proposte` = `{<percorso area>: {label, tipo, stato, n_documenti, documenti}}`
 (overlay per cartella dei documenti, da confermare; non sostituisce i cluster).
+
+**Campo opzionale `regole`** (in oggetti dati, report, ingestione e altri profili): lista di
+`{tipo: esclusione|filtro|specificita|nota, ambito, regola, evidenza}`. Se assente, per esclusioni
+e specificità consulta il testo originale (passaggi) invece di concludere che non esistono.
+
+**`data/testi.json`** (solo cruscotto, opzionale): `{percorso: {p: [paragrafi], t: troncato}}`, testo originale
+dei documenti testuali elaborati, usato dallo strumento `passaggi`.

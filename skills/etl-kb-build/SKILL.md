@@ -271,6 +271,34 @@ contiene):
 }
 ```
 
+**Regole, esclusioni e specificità (blocco generico, valido per ogni
+profilo).** I riassunti strutturati perdono facilmente le condizioni che
+cambiano da un caso all'altro (esclusioni di dati, filtri di default,
+regole per società o sistema, note sul periodo provvisorio). Per non
+perderle, ogni voce di un profilo (oggetto dati, report, ingestione, ma
+anche profili di altre tipologie di knowledge: processi, servizi,
+contratti, normative) può avere un campo opzionale `regole`:
+
+```json
+"regole": [{"tipo": "esclusione|filtro|specificita|nota", "ambito": "società, sistema o caso a cui si applica",
+            "regola": "testo come scritto (max 500 caratteri)", "evidenza": "sezione"}]
+```
+
+`ambito` è sempre esplicito (non scrivere una regola valida solo per un
+sistema senza dirlo). È un campo dello schema, non un obbligo: includilo
+quando le domande dichiarate dall'utente riguardano condizioni di
+applicazione o differenze tra casi.
+
+**Passaggi originali per il recupero.** Il profilo non sostituisce il
+testo. `build_dashboard_data.py --source-root "<cartella documenti>"`
+scrive `data/testi.json` con i paragrafi originali (~700 caratteri) dei
+documenti testuali elaborati (docx, pdf, pptx, md, html, txt; le tabelle
+xlsx/csv no), troncati a `--max-chars` (default 20.000) con flag `t` se
+il testo è più lungo. La dashboard lo carica in background e lo espone
+allo strumento `passaggi`, che recupera i paragrafi più pertinenti con un
+indice TF-IDF. Pubblica anche `testi.json` insieme a `kb.json`. Dimensione
+tipica: ~1,2 MB per 130 documenti.
+
 Adatta i profili alle domande: se l'utente non chiede lineage, togli
 `relazioni`/`fonti`; se la KB serve altre domande (es. responsabilità per
 processo, SLA per servizio), definisci con lui il profilo corrispondente

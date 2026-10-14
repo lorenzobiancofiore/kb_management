@@ -74,10 +74,58 @@ def classifica_avviso(a):
     return "informativo"
 
 
+def passaggi(testo, target=700):
+    """Spezza il testo in passaggi di ~target caratteri, rispettando le righe."""
+    out, cur = [], ""
+    for riga in re.split(r"\n+", testo):
+        riga = riga.strip()
+        if not riga:
+            continue
+        if cur and len(cur) + len(riga) + 1 > target:
+            out.append(cur)
+            cur = riga
+        else:
+            cur = (cur + " " + riga).strip()
+    if cur:
+        out.append(cur)
+    return out
+
+
+def scrivi_testi(args, cat, est, out):
+    """Passaggi originali dei documenti elaborati (solo formati testuali) per il recupero in dashboard."""
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "etl_pipeline"))
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from catalogazione import extract_text
+    from pathlib import Path
+    tipi = {t.strip().lower() for t in args.tipi.split(",") if t.strip()}
+    estratti = {nfc(k): k for k in list(est.get("avanzamento", {})) + list(est.get("contenuto", {}))}
+    res, tot = {}, 0
+    for path in cat["documents"]:
+        ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+        if ext not in tipi or nfc(path) not in estratti:
+            continue
+        f = Path(args.source_root) / path
+        if not f.exists():
+            continue
+        txt, _ = extract_text(f, ext)
+        if not txt:
+            continue
+        ps = passaggi(txt[: args.max_chars])
+        res[path] = {"p": ps, "t": len(txt) > args.max_chars}
+        tot += sum(len(x) for x in ps)
+    with open(os.path.join(out, "testi.json"), "w", encoding="utf-8") as fh:
+        json.dump(res, fh, ensure_ascii=False, separators=(",", ":"))
+    print("testi.json", len(res), "documenti,", round(tot / 1024), "KB di testo")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--etl-dir", required=True)
     ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--source-root", help="cartella dei documenti sorgente: se data, scrive data/testi.json con i passaggi originali per il recupero")
+    ap.add_argument("--max-chars", type=int, default=20000, help="massimo di caratteri di testo per documento in testi.json")
+    ap.add_argument("--tipi", default="docx,pdf,pptx,md,html,htm,txt", help="estensioni da includere in testi.json (tabelle xlsx/csv escluse)")
     args = ap.parse_args()
     E = args.etl_dir
 
@@ -207,6 +255,8 @@ def main():
         json.dump(kb, f, ensure_ascii=False, separators=(",", ":"))
     with open(os.path.join(out, "stato.json"), "w", encoding="utf-8") as f:
         json.dump(stato, f, ensure_ascii=False, separators=(",", ":"))
+    if args.source_root:
+        scrivi_testi(args, cat, est, out)
     print("kb.json", round(os.path.getsize(os.path.join(out, "kb.json")) / 1024), "KB |",
           "estratti", stats["documenti_estratti"], "/", stats["documenti_indicizzati"],
           "| avvisi da gestire", stats["avvisi_da_gestire"], "| non elaborati", stats["non_elaborati"])
