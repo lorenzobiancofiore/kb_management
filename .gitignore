@@ -1,0 +1,34 @@
+# Sistema operativo ed editor
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Cruscotto KB: i dati reali si generano FUORI dal repo o in queste cartelle, mai versionati
+dashboard_build/
+dashboard/data_reale/
+dashboard/*.local.json
+# Nota: dashboard/data/kb.json e dashboard/data/stato.json sono template vuoti e vanno versionati.
+
+# Conoscenza e output delle pipeline (vivono nelle cartelle di progetto, non nel codice)
+Output/
+ETL_Documentale/
+catalogo_*.json
+estrazione_*.json
+knowledge_layer_*.json
+cronistoria_*.json
+relazioni_*.json
+index_*.json
+ontology_viewer.html
+
+# Backup e file temporanei
+*.bak
+*.bak_*
+backup_*/
+*.tmp
+~$*
