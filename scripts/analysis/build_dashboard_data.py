@@ -8,6 +8,7 @@ pronti per essere pubblicati accanto alla pagina `dashboard/dashboard.html`:
   <out>/data/kb.json     KB compatta (estrazione, knowledge layer, cronistoria,
                          catalogo senza centroidi, relazioni B1/B2, correzioni)
                          + statistiche calcolate + avvisi con id e stato
+  (kb.json contiene anche `discordanze`, da discordanze_pilota.json)
   <out>/data/stato.json  copia di `stato_ultima_elaborazione.json` (esito
                          dell'ultima elaborazione, storico)
 
@@ -136,6 +137,7 @@ def main():
     cr = load(pick("cronistoria_*.json"), {})
     rel = load(pick("relazioni_*.json"), {})
     corr = load(pick("correzioni_*.json"), None)
+    disc = load(os.path.join(E, "discordanze_pilota.json"), {"meta": {}, "discordanze": []})
     stato = load(os.path.join(E, "stato_ultima_elaborazione.json"), {
         "data_run": None, "tipo": None, "esito": "nessun_dato",
         "riepilogo": "Nessuna elaborazione registrata.", "storico": []})
@@ -226,6 +228,8 @@ def main():
         "report": len(kl.get("report", [])),
         "ingestione_sistemi": len(kl.get("ingestione_sistema", [])),
         "archi_lineage": len(relB["lineage"]),
+        "discordanze_aperte": sum(1 for d in disc.get("discordanze", []) if d.get("stato") == "aperta"),
+        "discordanze_confermate": sum(1 for d in disc.get("discordanze", []) if d.get("stato") == "confermata"),
         "correzioni_attive": len([c for c in (corr or {}).get("correzioni", []) if not c.get("superata")]) if isinstance(corr, dict) else 0,
     }
 
@@ -245,8 +249,10 @@ def main():
             "timeline": timeline,
             "temi": cr.get("possibili_aggiornamenti_decisioni", []),
             "avvisi": avvisi,
+            "evoluzioni": cr.get("evoluzioni_rilevate", []),
         },
         "relazioni": relB,
+        "discordanze": disc.get("discordanze", []),
         "correzioni": (corr or {}).get("correzioni", []) if isinstance(corr, dict) else (corr or []),
     }
     out = os.path.join(args.out_dir, "data")

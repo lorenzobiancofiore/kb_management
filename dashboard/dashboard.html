@@ -104,6 +104,14 @@ textarea{resize:vertical;min-height:62px}
 .sec-head[aria-expanded="true"] .chev{transform:rotate(-135deg)}
 .sec-body{display:flex;flex-direction:column;gap:14px;min-width:0}
 .sec-body[hidden]{display:none}
+select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px;max-width:100%}
+.vers{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.ver{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--bg);display:flex;flex-direction:column;gap:4px;min-width:0}
+.ver.prop{border-color:var(--accent);background:var(--accent-soft)}
+.ver .d{font-weight:600;font-size:13px;overflow-wrap:anywhere}
+.ver .p{font-family:var(--mono);font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.ver .x{margin:0;overflow-wrap:anywhere}
+.av.disc{border-left-color:var(--warn)} .av.disc.conf{border-left-color:var(--ok)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -119,6 +127,7 @@ textarea{resize:vertical;min-height:62px}
   <nav class="quick" aria-label="Sezioni">
     <button class="qbtn" type="button" data-sec="esito"><span>Ultima elaborazione</span><span class="badge" id="bd-esito"></span></button>
     <button class="qbtn" type="button" data-sec="avvisi"><span>Punti da gestire</span><span class="badge warn" id="bd-avvisi"></span></button>
+    <button class="qbtn" type="button" data-sec="disc"><span>Informazioni discordanti</span><span class="badge warn" id="bd-disc"></span></button>
     <button class="qbtn" type="button" data-sec="numeri"><span>Numeri</span><span class="badge" id="bd-numeri"></span></button>
     <button class="qbtn" type="button" data-sec="ask"><span>Interroga la knowledge</span></button>
   </nav>
@@ -134,6 +143,17 @@ textarea{resize:vertical;min-height:62px}
       <p class="note" id="avvisi-note">Segnalazioni raccolte dalla pipeline. Le risposte restano salvate e vengono applicate alla KB dall'aggiornamento giornaliero delle 13:00.</p>
       <div class="tabs" id="avvisi-tabs" role="group" aria-label="Filtro segnalazioni"></div>
       <div class="avvisi" id="avvisi-list"></div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-disc">
+    <button class="sec-head" type="button" id="h-disc" aria-expanded="false" aria-controls="b-disc"><span class="t">Informazioni discordanti</span><span id="disc-pill"></span><span class="chev" aria-hidden="true"></span></button>
+    <div class="sec-body" id="b-disc" hidden>
+      <p class="note">Documenti dello stesso cluster, validi nello stesso momento, che dicono cose incompatibili (le versioni che si limitano ad aggiornare le precedenti sono nella cronistoria). Finché non confermi, la knowledge base usa la versione proposta (la più recente) e la segna come non confermata. La tua risposta viene applicata all'aggiornamento delle 13:00.</p>
+      <div class="tabs" id="disc-tabs" role="group" aria-label="Filtro discordanze"></div>
+      <div class="row"><label class="eyebrow" for="disc-cl">Cluster</label><select id="disc-cl"></select></div>
+      <div class="avvisi" id="disc-list"></div>
+      <div class="row"><button class="btn ghost" id="disc-more" type="button" hidden>Mostra altre</button></div>
     </div>
   </section>
 
@@ -214,8 +234,9 @@ function searchCronistoria(kb,query){
   var qt=toks(query),c=kb.cronistoria;function hit(txt){var n=normTxt(txt);return qt.filter(function(t){return n.indexOf(t)>-1;}).length;}
   var temi=(c.temi||[]).map(function(t){return {t:t,s:hit(JSON.stringify(t))};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3).map(function(x){return x.t;});
   var avvisi=(c.avvisi||[]).map(function(a){return {a:a,s:hit(a.descrizione+" "+(a.documenti_coinvolti||a.documenti||[]).join(" "))};}).filter(function(x){return x.s>=Math.max(1,Math.ceil(qt.length/2));}).sort(function(a,b){return b.s-a.s;}).slice(0,5).map(function(x){return {tipo:x.a.tipo,stato:x.a.stato,descrizione:clip(x.a.descrizione,500),documenti:(x.a.documenti_coinvolti||x.a.documenti||[]).slice(0,5)};});
+  var evo=(c.evoluzioni||[]).map(function(e){return {e:e,s:hit(e.tema+" "+(e.passi||[]).map(function(p){return p.testo;}).join(" "))};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,4).map(function(x){return {tema:x.e.tema,cluster:x.e.cluster,versione_valida:x.e.versione_valida,passi:(x.e.passi||[]).map(function(p){return {documento:p.documento,data:p.data,testo:clip(p.testo,220)};})};});
   var tl=(c.timeline||[]).map(function(v){return {v:v,s:hit((v.decisioni||[]).join(" ")+" "+v.documento)};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s||(isoDate(b.v.data)&&isoDate(a.v.data)?(b.v.data<a.v.data?-1:1):0);}).slice(0,8).map(function(x){return {data:x.v.data,documento:x.v.documento,fonte_data:x.v.fonte_data,decisioni:(x.v.decisioni||[]).slice(0,6).map(function(d){return clip(d,240);})};});
-  return {temi_tracciati:temi,avvisi_qualita_dati:avvisi,timeline_decisioni:tl};
+  return {temi_tracciati:temi,evoluzioni_rilevate:evo,avvisi_qualita_dati:avvisi,timeline_decisioni:tl};
 }
 function coverageSummary(kb){
   return {documenti_indicizzati:kb.stats.documenti_indicizzati,documenti_estratti:kb.stats.documenti_estratti,
@@ -344,7 +365,7 @@ function renderEsito(){
   if((s.errori||[]).length){var eb=el("div",{class:"err"});(s.errori).forEach(function(x){eb.appendChild(el("div",{text:typeof x==="string"?x:JSON.stringify(x)}));});body.appendChild(eb);}
   if((s.risposte_applicate||[]).length){var ra=el("details",null,[el("summary",null,[el("span",{text:"Risposte applicate in questa elaborazione"}),el("span",{class:"num pill ok",text:String(s.risposte_applicate.length)})])]);var ul2=el("ul");s.risposte_applicate.forEach(function(x){ul2.appendChild(el("li",{text:typeof x==="string"?x:JSON.stringify(x)}));});ra.appendChild(ul2);body.appendChild(ra);}
   var st=s.storico||[];
-  if(st.length){var h=el("details",null,[el("summary",null,[el("span",{text:"Storico delle elaborazioni"}),el("span",{class:"num pill info",text:String(st.length)})])]);var ul3=el("ul");st.slice(0,12).forEach(function(x){ul3.appendChild(el("li",null,[el("b",{text:fmtDate(x.data)+" · "}),document.createTextNode((x.tipo?x.tipo+" · ":"")+(ESITO[x.esito]?ESITO[x.esito][1]+". ":"")+(x.riepilogo||""))]));});h.appendChild(ul3);body.appendChild(h);}
+  if(st.length){var h=el("details",null,[el("summary",null,[el("span",{text:"Storico delle elaborazioni"}),el("span",{class:"num pill info",text:String(st.length)})])]);var ul3=el("ul");st.slice(0,12).forEach(function(x){ul3.appendChild(el("li",null,[el("b",{text:fmtDate(x.data_run||x.data)+" · "}),document.createTextNode((x.tipo?x.tipo+" · ":"")+(ESITO[x.esito]?ESITO[x.esito][1]+". ":"")+(x.riepilogo||""))]));});h.appendChild(ul3);body.appendChild(h);}
 }
 
 /* ---------- 2. Punti da gestire ---------- */
@@ -352,7 +373,7 @@ function respKey(a){return a.id;}
 function renderAvvisi(){
   var av=(S.kb.cronistoria.avvisi||[]),tabs=$("avvisi-tabs"),list=$("avvisi-list");clear(tabs);clear(list);
   var cnt={da_gestire:0,informativo:0,gestito:0};av.forEach(function(a){cnt[a.stato]=(cnt[a.stato]||0)+1;});
-  var pending=Object.keys(S.risposte).filter(function(k){return S.risposte[k]&&!S.risposte[k].applicata;}).length;
+  var pending=Object.keys(S.risposte).filter(function(k){return k.indexOf("av-")===0&&S.risposte[k]&&!S.risposte[k].applicata;}).length;
   [["da_gestire","Da gestire"],["informativo","Informativi"],["gestito","Gestiti"],["tutti","Tutti"]].forEach(function(t){
     var n=t[0]==="tutti"?av.length:cnt[t[0]]||0;
     tabs.appendChild(el("button",{class:"tab",type:"button","aria-pressed":S.filter===t[0]?"true":"false",onclick:function(){S.filter=t[0];renderAvvisi();}},[t[1],el("span",{class:"n",text:String(n)})]));});
@@ -398,8 +419,8 @@ function initDb(){
   if(!window.claude||!window.claude.use)return Promise.resolve();
   return window.claude.use("db").then(function(db){
     if(!db)return;S.db=db;
-    try{db.collection("risposte").onSnapshot(function(snap){var m={};docsOf(snap).forEach(function(d){var x=dataOf(d);if(x&&x.avvisoId)m[x.avvisoId]=x;});S.risposte=m;if(S.kb){renderAvvisi();updateBadges();}},function(){});}catch(e){}
-    if(S.kb)renderAvvisi();
+    try{db.collection("risposte").onSnapshot(function(snap){var m={};docsOf(snap).forEach(function(d){var x=dataOf(d);if(x&&x.avvisoId)m[x.avvisoId]=x;});S.risposte=m;if(S.kb){renderAvvisi();renderDisc();updateBadges();}},function(){});}catch(e){}
+    if(S.kb){renderAvvisi();renderDisc();}
   }).catch(function(){});
 }
 
@@ -431,7 +452,7 @@ function renderNumeri(){
 
 /* ---------- 4. Interrogazione ---------- */
 var ESEMPI=["Cosa è stato deciso sui ruoli di Data Owner e Data Steward e come si è arrivati alla circolare di nomina?","Chi è il Data Owner proposto per Metering Mass Market e Grandi Utenze?","Quali sistemi alimentano il perimetro dati Metering?","Quali punti sono emersi nella sessione Metering del 22 settembre 2026?"];
-var ISTRUZIONI="Sei l'interfaccia di interrogazione di una knowledge base documentale (Progetto Data Governance Italgas/Bludigit) costruita da una pipeline a 5 fasi: Catalogo, Estrazione (fatti per documento), Knowledge Layer (entità canoniche con menzioni), Cronistoria (decisioni nel tempo, catene di aggiornamento, avvisi di qualità). Rispondi in italiano, in modo diretto e concreto.\n\nMETODO (percorri le fasi al contrario, dal più sintetico al documento):\n1. Prima chiama `copertura` una volta per sapere cosa è stato elaborato.\n2. Espandi mentalmente la domanda in 3-5 varianti (sigle, sinonimi, termini tecnici/gergali) e usale nelle ricerche; se la domanda ha più sotto-temi, cercali uno per uno.\n3. `cronistoria`: temi tracciati (catena decisione precedente → successiva → aggiornamenti), avvisi di qualità e timeline. Per l'evoluzione di una decisione parti da qui.\n4. `entita` per persone, sistemi/tool, normative (nome e alias): dà le menzioni più recenti con documento e data. `relazioni` per ruoli dichiarati.\n4bis. Domande su CAMPI di una vista/tabella, LOGICA DI CALCOLO di un KPI/report, LINEAGE (da dove arrivano i dati) o STATO INGESTION: usa `oggetto_dati`, `report`, `lineage` (con l\'id restituito) e `ingestione`, che leggono i profili strutturati estratti dai documenti. Riporta formule e nomi di campo come scritti nel documento, citando documento e data; se `logica_calcolo` non è dichiarata dì che il documento non la riporta, non ricostruirla. Se due documenti descrivono diversamente lo stesso KPI o campo, mostra la differenza e indica il più recente. Gli oggetti con `n_campi_totali` maggiore di quelli mostrati o con avvisi di troncamento sono parziali: dillo.\n4ter. Per domande su COME SI CALCOLA un KPI o su regole, esclusioni e specificità per società/sistema usa anche `passaggi`, che restituisce i paragrafi ORIGINALI dei documenti: i profili sono riassunti e possono omettere esclusioni, filtri e regole per fonte. Cerca con più query (es. 'esclusioni', 'filtri', il nome della società) e cita sempre il documento del passaggio. Risposta su un KPI, in quest'ordine: (1) definizione e formula; (2) passi di calcolo; (3) esclusioni e filtri; (4) regole per società/fonte; (5) viste e tabelle di origine, solo quelle dichiarate nei documenti (una mappa KPI→vista non scritta nel testo è un'inferenza: dillo); (6) versioni e differenze con date (data = modifica file, approssimata); (7) avvisi e parti non lette (file non leggibili, testo troncato).\n5. Se il match esatto non basta o è a vuoto usa `cerca_testo` (TF-IDF sui testi di Estrazione) per ogni sotto-tema, poi conferma aprendo il documento con `scheda_documento`. Punteggi bassi (<0.15) vanno verificati a mano.\n6. Per temi in cluster non coperti usa `cerca_catalogo` e dillo: 'non ancora elaborato' non è 'non esiste'.\n\nREGOLE: cita sempre documento (percorso relativo) e data per ogni affermazione; se i documenti si contraddicono vince il più recente, ma con 3 o più candidati o date parziali mostra i 2-3 più recenti con le date; riporta i caveat degli avvisi di qualità sui documenti usati e le correzioni registrate (hanno la precedenza); non inventare nulla che gli strumenti non restituiscono; se l'informazione manca dillo. Risposta breve: poche righe o elenco puntato, poi una riga 'Fonti' con i percorsi.";
+var ISTRUZIONI="Sei l'interfaccia di interrogazione di una knowledge base documentale (Progetto Data Governance Italgas/Bludigit) costruita da una pipeline a 5 fasi: Catalogo, Estrazione (fatti per documento), Knowledge Layer (entità canoniche con menzioni), Cronistoria (decisioni nel tempo, catene di aggiornamento, avvisi di qualità). Rispondi in italiano, in modo diretto e concreto.\n\nMETODO (percorri le fasi al contrario, dal più sintetico al documento):\n1. Prima chiama `copertura` una volta per sapere cosa è stato elaborato.\n2. Espandi mentalmente la domanda in 3-5 varianti (sigle, sinonimi, termini tecnici/gergali) e usale nelle ricerche; se la domanda ha più sotto-temi, cercali uno per uno.\n3. `cronistoria`: temi tracciati (catena decisione precedente → successiva → aggiornamenti), avvisi di qualità e timeline. Per l'evoluzione di una decisione parti da qui.\n4. `entita` per persone, sistemi/tool, normative (nome e alias): dà le menzioni più recenti con documento e data. `relazioni` per ruoli dichiarati.\n4bis. Domande su CAMPI di una vista/tabella, LOGICA DI CALCOLO di un KPI/report, LINEAGE (da dove arrivano i dati) o STATO INGESTION: usa `oggetto_dati`, `report`, `lineage` (con l\'id restituito) e `ingestione`, che leggono i profili strutturati estratti dai documenti. Riporta formule e nomi di campo come scritti nel documento, citando documento e data; se `logica_calcolo` non è dichiarata dì che il documento non la riporta, non ricostruirla. Se due documenti descrivono diversamente lo stesso KPI o campo, mostra la differenza e indica il più recente. Gli oggetti con `n_campi_totali` maggiore di quelli mostrati o con avvisi di troncamento sono parziali: dillo.\n4ter. Per domande su COME SI CALCOLA un KPI o su regole, esclusioni e specificità per società/sistema usa anche `passaggi`, che restituisce i paragrafi ORIGINALI dei documenti: i profili sono riassunti e possono omettere esclusioni, filtri e regole per fonte. Cerca con più query (es. 'esclusioni', 'filtri', il nome della società) e cita sempre il documento del passaggio. Risposta su un KPI, in quest'ordine: (1) definizione e formula; (2) passi di calcolo; (3) esclusioni e filtri; (4) regole per società/fonte; (5) viste e tabelle di origine, solo quelle dichiarate nei documenti (una mappa KPI→vista non scritta nel testo è un'inferenza: dillo); (6) versioni e differenze con date (data = modifica file, approssimata); (7) avvisi e parti non lette (file non leggibili, testo troncato).\n5. Se il match esatto non basta o è a vuoto usa `cerca_testo` (TF-IDF sui testi di Estrazione) per ogni sotto-tema, poi conferma aprendo il documento con `scheda_documento`. Punteggi bassi (<0.15) vanno verificati a mano.\n6b. Chiama `discordanze` quando la domanda riguarda ruoli, responsabili, date o denominazioni: se esiste una discordanza NON CONFERMATA sul punto, rispondi con la versione proposta (più recente) ma dillo esplicitamente ('non confermato') e mostra l'altra versione con documento e data; se è CONFERMATA usa la versione confermata e indica la conferma dell'utente.\n6. Per temi in cluster non coperti usa `cerca_catalogo` e dillo: 'non ancora elaborato' non è 'non esiste'.\n\nREGOLE: cita sempre documento (percorso relativo) e data per ogni affermazione; se i documenti si contraddicono vince il più recente, ma con 3 o più candidati o date parziali mostra i 2-3 più recenti con le date; riporta i caveat degli avvisi di qualità sui documenti usati e le correzioni registrate (hanno la precedenza); non inventare nulla che gli strumenti non restituiscono; se l'informazione manca dillo. Risposta breve: poche righe o elenco puntato, poi una riga 'Fonti' con i percorsi.";
 function tools(){
   var kb=S.kb;
   var wrap=function(name,description,props,fn,req){return {name:name,description:description,inputSchema:{type:"object",properties:props,required:req||[]},execute:function(input){log(name+(input&&input.query?" · "+input.query:input&&input.percorso?" · "+input.percorso.split("/").pop():input&&input.id?" · "+input.id:""));var out=fn(input||{});var s=JSON.stringify(out);return s.length>14000?s.slice(0,14000)+"…[troncato]":out;}};};
@@ -447,6 +468,7 @@ function tools(){
    wrap("lineage","Lineage dichiarato: per un report/oggetto dati (id da `report` o `oggetto_dati`) da quali viste, tabelle e sistemi dipende e da chi è usato.",{id:{type:"string"}},function(i){return lineageFor(kb,i.id||"");},["id"]),
    wrap("ingestione","Stato e modalità di ingestione di un sistema sorgente (SAP, Salesforce, NET@2A...): oggetti ingeriti, modalità, frequenza, stato, per documento.",{query:{type:"string"}},function(i){return ingestioneFor(kb,i.query||"");},["query"]),
    wrap("passaggi","Recupera i paragrafi ORIGINALI dei documenti (testo del Word/PDF/PPT, non un riassunto). Usalo per esclusioni, filtri, regole per società o sistema, note e passi di calcolo che il profilo può aver omesso. `percorso` (anche parziale) restringe a un documento.",{query:{type:"string",description:"cosa cercare (es. esclusioni fatturato, regole Acqualatina, filtri di spalla)"},percorso:{type:"string",description:"percorso o parte del nome del documento (facoltativo)"}},function(i){if(!S.pidx)return {errore:"Testi originali non disponibili in questa vista.",suggerimento:"Usa scheda_documento e i profili."};return passSearch(S.pidx,i.query||"",i.percorso,7).map(function(x){return {documento:x.c.p,passaggio:x.c.i+1,testo:clip(x.c.t,950),punteggio:Math.round(x.score*1000)/1000,documento_troncato:x.c.tr||undefined};});},["query"]),
+   wrap("discordanze","Informazioni discordanti tra documenti dello stesso cluster: versioni a confronto, proposta (il più recente) e stato di conferma dell'utente. Usalo quando la domanda tocca ruoli, responsabili, date o denominazioni.",{query:{type:"string"}},function(i){var qt=toks(i.query||"");return discList().map(function(d){var n=normTxt(d.tema+" "+d.motivo+" "+(d.affermazioni||[]).map(function(a){return a.testo;}).join(" "));var s=qt.filter(function(t){return n.indexOf(t)>-1;}).length;return {d:d,s:s};}).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,6).map(function(x){var d=x.d;return {id:d.id,cluster:d.cluster,stato:d.stato==="confermata"?"CONFERMATA":"NON CONFERMATA",tema:d.tema,motivo:clip(d.motivo,400),versioni:(d.affermazioni||[]).map(function(a){return {documento:a.documento,data:a.data,testo:clip(a.testo,240)};}),proposta:d.proposta,conferma:d.conferma||null,risposta_in_attesa:S.risposte[d.id]?{esito:S.risposte[d.id].esito,documento:S.risposte[d.id].documento||null,testo:S.risposte[d.id].testo}:null};});},["query"]),
    wrap("cerca_catalogo","Cerca documenti per nome file o etichetta di cluster nel Catalogo, anche non elaborati.",{query:{type:"string"}},function(i){return searchCatalog(kb,i.query||"");},["query"])
   ];
 }
@@ -481,6 +503,79 @@ function initAsk(){
 }
 
 
+
+/* ---------- discordanze ---------- */
+var DCAT={responsabile:"Responsabile",ruolo:"Ruolo",data:"Data",nome:"Denominazione",decisione:"Decisione",sistema:"Sistema",altro:"Altro"};
+function baseName(p){return String(p||"").split("/").pop();}
+function dirName(p){var a=String(p||"").split("/");a.pop();return a.join("/");}
+S.dFilter="aperta";S.dCluster="";S.dShown=10;
+function discList(){return ((S.kb&&S.kb.discordanze)||[]).filter(function(d){return d.stato!=="evoluzione";});}
+function dStatoEff(d){var r=S.risposte[d.id];return d.stato==="confermata"?"confermata":(r?"in_attesa":d.stato);}
+function renderDisc(){
+  var all=discList(),tabs=$("disc-tabs"),list=$("disc-list"),sel=$("disc-cl");clear(tabs);clear(list);
+  var cnt={aperta:0,confermata:0,rientrata:0};all.forEach(function(d){cnt[d.stato]=(cnt[d.stato]||0)+1;});
+  var attesa=all.filter(function(d){return d.stato!=="confermata"&&S.risposte[d.id]&&!S.risposte[d.id].applicata;}).length;
+  [["aperta","Aperte"],["confermata","Confermate"],["rientrata","Rientrate"],["tutte","Tutte"]].forEach(function(t){
+    var n=t[0]==="tutte"?all.length:cnt[t[0]]||0;if(t[0]==="rientrata"&&!n)return;
+    tabs.appendChild(el("button",{class:"tab",type:"button","aria-pressed":S.dFilter===t[0]?"true":"false",onclick:function(){S.dFilter=t[0];S.dShown=10;renderDisc();}},[t[1],el("span",{class:"n",text:String(n)})]));});
+  if(attesa)tabs.appendChild(el("span",{class:"pill warn",text:attesa+(attesa===1?" risposta in attesa di applicazione":" risposte in attesa di applicazione")}));
+  var base=all.filter(function(d){return S.dFilter==="tutte"||d.stato===S.dFilter;});
+  var cl={};base.forEach(function(d){cl[d.cluster]=(cl[d.cluster]||{label:d.cluster_label,n:0});cl[d.cluster].n++;});
+  clear(sel);sel.appendChild(el("option",{value:"",text:"Tutti ("+base.length+")"}));
+  Object.keys(cl).sort(function(a,b){return (+a)-(+b);}).forEach(function(k){sel.appendChild(el("option",{value:k,text:k+" · "+clip(cl[k].label.replace(/^Data Governance - /,""),48)+" ("+cl[k].n+")"}));});
+  if(!cl[S.dCluster])S.dCluster="";sel.value=S.dCluster;sel.onchange=function(){S.dCluster=sel.value;S.dShown=10;renderDisc();};
+  var shown=base.filter(function(d){return !S.dCluster||d.cluster===S.dCluster;});
+  var more=$("disc-more");
+  if(!shown.length){list.appendChild(el("div",{class:"empty",text:S.dFilter==="aperta"?"Nessuna discordanza aperta.":"Nessuna discordanza in questa categoria."}));more.hidden=true;return;}
+  shown.slice(0,S.dShown).forEach(function(d){list.appendChild(discCard(d));});
+  more.hidden=shown.length<=S.dShown;more.textContent="Mostra altre ("+(shown.length-S.dShown)+")";
+  more.onclick=function(){S.dShown+=10;renderDisc();};
+}
+function discCard(d){
+  var st=dStatoEff(d),pill={aperta:["warn","Aperta"],in_attesa:["acc","Risposta inviata"],confermata:["ok","Confermata"],rientrata:["info","Rientrata"]}[st]||["info",st];
+  var card=el("article",{class:"av disc"+(d.stato==="confermata"?" conf":""),id:d.id},[
+    el("div",{class:"head"},[el("span",{class:"pill "+pill[0],text:pill[1]}),el("span",{class:"pill info",text:DCAT[d.categoria]||"Altro"}),el("b",{text:d.tema})]),
+    el("div",{class:"note",text:"Cluster "+d.cluster+" · "+String(d.cluster_label||"").replace(/^Data Governance - /,"")}),
+    el("p",{class:"txt",text:d.motivo})]);
+  var v=el("div",{class:"vers"});
+  (d.affermazioni||[]).forEach(function(a){
+    var isProp=d.proposta&&a.documento===d.proposta.documento;
+    v.appendChild(el("div",{class:"ver"+(isProp?" prop":"")},[
+      isProp?el("span",{class:"pill acc",text:"Proposta: prevale"}):null,
+      el("span",{class:"d",text:baseName(a.documento)}),
+      el("span",{class:"p",text:dirName(a.documento)}),
+      el("span",{class:"note",text:a.data?"Data: "+a.data:"Data non disponibile"}),
+      el("p",{class:"x",text:a.testo})]));});
+  card.appendChild(v);
+  if(d.proposta&&d.proposta.motivazione)card.appendChild(el("div",{class:"note",text:"Perché questa proposta: "+d.proposta.motivazione}));
+  if(d.conferma)card.appendChild(el("div",{class:"sent",text:"Confermata il "+fmtDate(d.conferma.data)+": "+(d.conferma.esito||"")+(d.conferma.documento?" ("+baseName(d.conferma.documento)+")":"")+(d.conferma.testo?" – “"+d.conferma.testo+"”":"")}));
+  card.appendChild(discReply(d));
+  return card;
+}
+function discReply(d){
+  var r=S.risposte[d.id],box=el("div",{class:"reply"});
+  if(!S.db){box.appendChild(el("div",{class:"note",text:"Le risposte non sono disponibili in questa vista (serve aprire la pagina con il tuo account)."}));return box;}
+  if(d.stato==="confermata"&&!r)return box;
+  if(r)box.appendChild(el("div",{class:"sent"+(r.applicata?" applied":""),text:(r.applicata?"Applicata alla KB il "+fmtDate(r.applicata_il)+". ":"Risposta inviata il "+fmtDate(r.ts)+": sarà applicata all'aggiornamento delle 13:00. ")+"“"+(r.esito||"")+(r.documento?" – "+baseName(r.documento):"")+(r.testo?" – "+r.testo:"")+"”"}));
+  var sel=(r&&r.esito)||"Confermo la proposta";
+  var docSel=el("select",{id:"ds-"+d.id,"aria-label":"Documento valido"});
+  (d.affermazioni||[]).forEach(function(a){docSel.appendChild(el("option",{value:a.documento,text:baseName(a.documento)+(a.data?" ("+a.data+")":"")}));});
+  var docRow=el("div",{class:"row"},[el("span",{class:"note",text:"Documento valido:"}),docSel]);docRow.hidden=sel!=="Vale un altro documento";
+  var esiti=el("div",{class:"esiti",role:"group","aria-label":"Esito della risposta"});
+  ["Confermo la proposta","Vale un altro documento","Entrambe vere","Da verificare"].forEach(function(x){esiti.appendChild(el("button",{class:"esito",type:"button","aria-pressed":x===sel?"true":"false",onclick:function(){sel=x;[].forEach.call(esiti.children,function(c){c.setAttribute("aria-pressed",c.textContent===x?"true":"false");});docRow.hidden=x!=="Vale un altro documento";}},[x]));});
+  var ta=el("textarea",{id:"dt-"+d.id,placeholder:"Nota (facoltativa; obbligatoria per “Entrambe vere”: spiega i contesti)"});
+  var send=el("button",{class:"btn",type:"button",text:r?"Aggiorna risposta":"Invia risposta"}),msg=el("span",{class:"note"});
+  send.addEventListener("click",function(){
+    var testo=ta.value.trim();if(sel==="Entrambe vere"&&!testo){msg.textContent="Spiega in una nota i contesti in cui sono entrambe vere.";return;}
+    var doc=sel==="Vale un altro documento"?docSel.value:(sel==="Confermo la proposta"?d.proposta.documento:null);
+    send.disabled=true;msg.textContent="Salvo…";
+    var rec={avvisoId:d.id,kind:"discordanza",tipo:"discordanza",estratto:d.tema.slice(0,160),esito:sel,documento:doc,testo:testo,ts:new Date().toISOString(),applicata:false,storico:r?((r.storico||[]).concat([{esito:r.esito,documento:r.documento||null,testo:r.testo,ts:r.ts}]).slice(-10)):[]};
+    S.db.doc("risposte/"+d.id).set(rec).then(function(){S.risposte[d.id]=rec;renderDisc();updateBadges();}).catch(function(e){send.disabled=false;msg.textContent="Non sono riuscito a salvare ("+((e&&(e.code||e.message))||"errore")+").";});
+  });
+  box.appendChild(esiti);box.appendChild(docRow);box.appendChild(ta);box.appendChild(el("div",{class:"row"},[send,msg]));
+  return box;
+}
+
 /* ---------- sezioni a comparsa e notifiche ---------- */
 function setSec(id,open){var b=$("h-"+id),c=$("b-"+id);if(!b||!c)return;b.setAttribute("aria-expanded",open?"true":"false");if(open)c.removeAttribute("hidden");else c.setAttribute("hidden","");}
 function toggleSec(id){var b=$("h-"+id);setSec(id,b.getAttribute("aria-expanded")!=="true");}
@@ -490,10 +585,12 @@ function updateBadges(){
   if(!S.kb)return;var av=S.kb.cronistoria.avvisi||[],dg=av.filter(function(a){return a.stato==="da_gestire"&&!(S.risposte[a.id]);}).length;
   badge("bd-avvisi",dg,"warn");var p=$("avvisi-pill");if(p){clear(p);if(dg)p.appendChild(el("span",{class:"pill warn",text:dg+(dg===1?" da gestire":" da gestire")}));}
   var e=ESITO[(S.stato||{}).esito];var ep=$("bd-esito");if(ep){ep.textContent=e?e[1]:"";ep.className="badge"+(e&&e[0]==="crit"?" crit":"")+(e?" on":"");}
+  var dd=discList().filter(function(d){return d.stato==="aperta"&&!S.risposte[d.id];}).length;badge("bd-disc",dd,"warn");
+  var dp=$("disc-pill");if(dp){clear(dp);if(dd)dp.appendChild(el("span",{class:"pill warn",text:dd+" da confermare"}));}
   badge("bd-numeri",S.kb.stats.non_elaborati?S.kb.stats.non_elaborati+" non elaborati":"","");
 }
 function initSections(){
-  ["esito","avvisi","numeri","ask"].forEach(function(id){$("h-"+id).addEventListener("click",function(){toggleSec(id);});});
+  ["esito","avvisi","disc","numeri","ask"].forEach(function(id){$("h-"+id).addEventListener("click",function(){toggleSec(id);});});
   [].forEach.call(document.querySelectorAll(".qbtn"),function(b){b.addEventListener("click",function(){var id=b.getAttribute("data-sec"),h=$("h-"+id);if(h.getAttribute("aria-expanded")==="true"){setSec(id,false);}else openSec(id);});});
 }
 
@@ -504,7 +601,7 @@ function load(){
   Promise.all([fetch("data/kb.json").then(function(r){if(!r.ok)throw new Error("kb.json "+r.status);return r.json();}),fetch("data/stato.json").then(function(r){return r.ok?r.json():{};}).catch(function(){return {};})]).then(function(a){
     S.kb=a[0];S.stato=a[1];S.idx=buildIndex(S.kb);fetch("data/testi.json").then(function(r){return r.ok?r.json():null;}).then(function(t){if(t){S.testi=t;S.pidx=buildPassIndex(t);}}).catch(function(){});
     $("stamp").textContent="Dati del "+fmtDate(S.kb.stats.generato_il);
-    renderEsito();renderNumeri();renderAvvisi();updateBadges();initDb();
+    renderEsito();renderNumeri();renderAvvisi();renderDisc();updateBadges();initDb();
   }).catch(function(e){fail("Non riesco a caricare i dati della knowledge base ("+(e&&e.message||"errore")+"). Riapri la pagina o attendi il prossimo aggiornamento.");});
 }
 load();

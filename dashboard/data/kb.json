@@ -23,7 +23,9 @@
   "archi_b1": 0,
   "archi_b2": 0,
   "archi_a": 0,
-  "correzioni_attive": 0
+  "correzioni_attive": 0,
+  "discordanze_aperte": 0,
+  "discordanze_confermate": 0
  },
  "per_cluster": [],
  "non_elaborati": [],
@@ -47,5 +49,6 @@
   "b1": [],
   "b2": []
  },
- "correzioni": []
+ "correzioni": [],
+ "discordanze": []
 }
